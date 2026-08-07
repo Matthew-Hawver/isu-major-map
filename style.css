@@ -1,0 +1,1660 @@
+/* ISU brand colors: Cardinal (#C8102E) and Gold (#F1BE48). */
+:root {
+  --bg: #f7f7fb;
+  --panel: #ffffff;
+  --border: #e0e0e8;
+  --text: #1f2430;
+  --muted: #6b7280;
+  --accent: #c8102e;
+  --accent-soft: #fbe4e8;
+  --gold: #f1be48;
+  --gold-soft: #fdf3d9;
+  --course: #2563eb;
+  --course-soft: #dbeafe;
+  --ok: #16a34a;
+  --ok-bg: #dcfce7;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --summer: #0e7490;
+  --summer-bg: #cffafe;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14141c;
+    --panel: #1d1d29;
+    --border: #2e2e3d;
+    --text: #e7e7f0;
+    --muted: #9497a6;
+    --accent: #ef4453;
+    --accent-soft: #3a1418;
+    --gold: #f1be48;
+    --gold-soft: #3a300f;
+    --course: #60a5fa;
+    --course-soft: #1e2a4a;
+    --ok: #4ade80;
+    --ok-bg: #123723;
+    --warn: #fbbf24;
+    --warn-bg: #3a2f10;
+    --danger: #f87171;
+    --danger-bg: #3a1414;
+    --summer: #67e8f9;
+    --summer-bg: #103944;
+  }
+}
+
+/* Explicit overrides for the light/dark switch -- these win over the
+   prefers-color-scheme media query above regardless of system setting,
+   since an attribute selector on :root is more specific than a bare :root. */
+:root[data-theme="light"] {
+  --bg: #f7f7fb;
+  --panel: #ffffff;
+  --border: #e0e0e8;
+  --text: #1f2430;
+  --muted: #6b7280;
+  --accent: #c8102e;
+  --accent-soft: #fbe4e8;
+  --gold: #f1be48;
+  --gold-soft: #fdf3d9;
+  --course: #2563eb;
+  --course-soft: #dbeafe;
+  --ok: #16a34a;
+  --ok-bg: #dcfce7;
+  --warn: #b45309;
+  --warn-bg: #fef3c7;
+  --danger: #dc2626;
+  --danger-bg: #fee2e2;
+  --summer: #0e7490;
+  --summer-bg: #cffafe;
+}
+
+:root[data-theme="dark"] {
+  --bg: #14141c;
+  --panel: #1d1d29;
+  --border: #2e2e3d;
+  --text: #e7e7f0;
+  --muted: #9497a6;
+  --accent: #ef4453;
+  --accent-soft: #3a1418;
+  --gold: #f1be48;
+  --gold-soft: #3a300f;
+  --course: #60a5fa;
+  --course-soft: #1e2a4a;
+  --ok: #4ade80;
+  --ok-bg: #123723;
+  --warn: #fbbf24;
+  --warn-bg: #3a2f10;
+  --danger: #f87171;
+  --danger-bg: #3a1414;
+  --summer: #67e8f9;
+  --summer-bg: #103944;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden; /* the page itself never scrolls; individual panels below do */
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #050505 url("assets/topo-background.jpg") center center / cover fixed no-repeat;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+header {
+  flex: 0 0 auto;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  /* solid, not transparent like the tab-bar/bottom-bar -- this row is dense
+     with labels and buttons that need to stay legible over the topo backdrop */
+  background: var(--panel);
+}
+
+h1 { margin: 0 0 0.6rem; font-size: 1.25rem; }
+
+.picker,
+#summary-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.picker label,
+.landing-extra-pickers label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Summary bar shown once setup is complete (see #landing/#app below) --
+   program names take the remaining space, action buttons stay right-aligned. */
+#summary-bar {
+  align-items: center;
+}
+
+.summary-programs {
+  flex: 1 1 auto;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+/* Second Major/Minor/Masters/Honors + the "View My Schedule" button, shown
+   inside the landing card once a major is picked (see selectMajor() in
+   app.js) -- and shown-and-prefilled again from "Edit Selections". */
+.landing-extra-pickers {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  text-align: left;
+}
+
+.landing-extra-hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.landing-extra-pickers select { width: 100%; }
+
+.view-schedule-btn {
+  margin-top: 0.4rem;
+  align-self: center;
+  padding: 0.7rem 1.8rem;
+  border-radius: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.view-schedule-btn:hover { filter: brightness(1.08); }
+
+.honors-toggle {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem !important;
+}
+
+.optional { font-weight: 400; color: var(--muted); }
+
+.info-icon-btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+  vertical-align: middle;
+}
+
+.info-icon-btn:hover { color: var(--accent); }
+
+.honors-rules-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+select {
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.88rem;
+  min-width: 220px;
+}
+
+.progress-summary {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.progress-summary.complete { color: var(--ok); }
+
+/* ---------------- two-column, viewport-locked layout ---------------- */
+
+main {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.landing {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.25rem;
+  min-height: 0;
+}
+
+/* Fills whatever vertical space is left below the logo and centers the
+   question card within just that space, so the logo stays anchored near
+   the top regardless of how tall the card is. */
+.landing-card-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.landing-inner {
+  width: min(640px, 90%);
+  text-align: center;
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 2.25rem 2.5rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+}
+
+.landing-inner h2 { margin: 0 0 1rem; font-size: 1.4rem; }
+
+.isu-logo {
+  flex: 0 0 auto;
+  display: block;
+  width: 12rem;
+  height: 12rem;
+  margin: 0.5rem 0 0;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.4));
+}
+
+.major-typeahead {
+  width: 100%;
+  padding: 0.8rem 1.1rem;
+  font-size: 1.05rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.major-typeahead-results {
+  margin-top: 0.85rem;
+  max-height: 55vh;
+  overflow-y: auto;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.typeahead-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 0.6rem 0.9rem;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.typeahead-row:first-child { border-top: none; }
+.typeahead-row:hover { background: var(--accent-soft); }
+
+.typeahead-name { font-weight: 600; font-size: 0.95rem; }
+.typeahead-college { font-size: 0.78rem; color: var(--muted); }
+
+.typeahead-hint {
+  margin: 0;
+  padding: 0.9rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+/* ---------------- reusable searchable select (createSearchableSelect in app.js) ---------------- */
+/* Same look/feel as the major typeahead above, but the results list floats
+   as an absolute-positioned overlay instead of pushing layout down --
+   needed since several of these can sit close together (the setup form) or
+   side-by-side in a toolbar (the graph filters), where an always-expanded
+   list under each one would be impractical. */
+
+.searchable-select-mount { position: relative; }
+
+.searchable-select-input {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.88rem;
+}
+
+.searchable-select-results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 30;
+  margin-top: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.searchable-select-results[hidden] { display: none; }
+
+/* [hidden] has the same (or, for #summary-bar, lower) specificity than the
+   selectors above, so without this override our own display:flex/flex-
+   direction would win the cascade and the hidden attribute would be
+   silently ignored. */
+.landing[hidden],
+#app[hidden],
+#summary-bar[hidden],
+.landing-extra-pickers[hidden] {
+  display: none;
+}
+
+.app-columns {
+  flex: 1 1 auto;
+  display: flex;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.semester-column {
+  flex: 0 0 min(460px, 36vw);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Every semester card is sized to its own content, with a 5-course-tall
+   floor (see .semester-course-list's min-height) so an empty/light
+   semester still reads as a real box rather than a sliver -- not an equal
+   share of the column's height like before, since a floor that generous
+   times 11-18 possible semesters (more with Fifth Year/Masters) usually
+   doesn't fit one screen. This column scrolls to cover that; the
+   add-summer/add-fifth-year buttons are fixed-height dividers in the flow,
+   not their own semester-sized rows. */
+.semester-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding-right: 0.35rem;
+}
+
+.semester-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding-top: 0.5rem;
+  margin-top: 0.35rem;
+  border-top: 1px solid var(--border);
+}
+
+.clear-all-btn {
+  border: 1px solid var(--danger);
+  background: none;
+  color: var(--danger);
+  border-radius: 8px;
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.clear-all-btn:hover { background: var(--danger-bg); }
+
+.browse-column {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  gap: 0.5rem;
+}
+
+.search-bar { flex: 0 0 auto; }
+
+#course-search {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  font-size: 0.95rem;
+}
+
+.search-hint {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.browse-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+/* ---------------- semester cards ---------------- */
+
+.semester-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  flex: 0 0 auto; /* sized to its own content -- see .semester-course-list's min-height */
+  display: flex;
+  flex-direction: column;
+}
+
+.semester-card.kind-hs { border-left-color: var(--accent); }
+.semester-card.kind-summer { border-left-color: var(--summer); }
+
+.semester-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.semester-head h3 {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.semester-credits {
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+}
+
+.semester-credits.neutral { color: var(--muted); }
+.semester-credits.ok { color: var(--ok); background: var(--ok-bg); }
+.semester-credits.warn { color: var(--warn); background: var(--warn-bg); }
+
+.semester-gpa {
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  color: var(--gold);
+  background: var(--gold-soft);
+}
+
+.remove-summer-btn {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.72rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.semester-course-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 0 0 auto;
+  /* A floor of 5 course-rows tall (~1.8rem each incl. gap), even when a
+     semester has 0-4 courses -- grows naturally past that for more, never
+     shrinks below it. */
+  min-height: 9.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-radius: 6px;
+  transition: background-color 0.1s ease;
+}
+
+.semester-course-list.drag-over {
+  background: var(--accent-soft);
+  outline: 2px dashed var(--accent);
+}
+
+.semester-empty {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-style: italic;
+  padding: 0.2rem 0;
+}
+
+/* Each placed course is a full row: code, description/pre-req toggle
+   buttons, credits, remove -- with an expandable detail line underneath
+   when one of the toggle buttons is clicked. */
+.course-row {
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background: var(--course-soft);
+  cursor: grab;
+}
+
+.course-row-main {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.4rem;
+  font-size: 0.78rem;
+}
+
+.chip-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--course);
+  white-space: nowrap;
+}
+
+.row-info-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.68rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.row-info-btn:hover { background: var(--course-soft); }
+
+.row-warning-icon {
+  color: var(--danger);
+  cursor: help;
+}
+
+.chip-credits {
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+  font-size: 0.72rem;
+}
+
+.course-row-detail {
+  margin: 0 0.4rem 0.35rem;
+  padding: 0.4rem 0.55rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: pre-line;
+}
+
+.grade-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.grade-picker-pass {
+  margin-top: 0.3rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--border);
+}
+
+.grade-option-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 6px;
+  min-width: 2rem;
+  padding: 0.15rem 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.grade-option-btn:hover { background: var(--gold-soft); }
+
+.grade-option-btn.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  /* Gold is light in both themes -- var(--text) is near-white in dark mode
+     and would be unreadable here, so this stays a fixed dark color. */
+  color: #1f2430;
+}
+
+.grade-clear-btn {
+  display: block;
+  margin-top: 0.4rem;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 0.68rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.course-row.drop-before {
+  border-left: 2px solid var(--accent);
+}
+
+.course-row.requisite-warning {
+  border-color: var(--danger);
+  background: var(--danger-bg);
+}
+
+.chip-remove {
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 0.1rem;
+  line-height: 1;
+}
+
+/* ---------------- add-summer button ---------------- */
+
+.add-summer-row {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.add-summer-btn {
+  border: 1px dashed var(--summer);
+  background: none;
+  color: var(--summer);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.add-summer-btn:hover { background: var(--summer-bg); }
+
+/* ---------------- requirements checklist / browse column ---------------- */
+
+.results-hint {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  margin: 0 0 0.75rem;
+}
+
+.program-summary {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.program-summary h2 { margin: 0 0 0.25rem; font-size: 1.1rem; }
+.program-summary .meta { color: var(--muted); font-size: 0.85rem; }
+.program-summary .meta-gpa { color: var(--gold); font-weight: 700; }
+
+.program-summary.complete { border-color: var(--ok); background: var(--ok-bg); }
+.program-summary.complete .meta-credits { color: var(--ok); font-weight: 700; }
+
+.flag-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.masters-badge {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+
+/* Embedded catalog links -- deliberately discreet: inherits surrounding
+   text color/weight so a program name doesn't look like a "visit site"
+   button, just happens to be clickable. */
+.program-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.program-link:hover { text-decoration: underline; }
+
+.section-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.9rem 1.15rem;
+  margin-bottom: 0.85rem;
+}
+
+.section-card.fulfilled {
+  border-color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.fulfilled-check { color: var(--ok); }
+
+.section-card h3 {
+  margin: 0 0 0.15rem;
+  font-size: 1rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.section-card .credits-pill {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.section-card .credits-pill.complete {
+  color: var(--ok);
+  background: var(--panel);
+}
+
+.requirement-list {
+  list-style: none;
+  margin: 0.65rem 0 0;
+  padding: 0;
+}
+
+.requirement-list li {
+  padding: 0.4rem 0;
+  border-top: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.requirement-list li:first-child { border-top: none; }
+
+.course-desc {
+  color: var(--muted);
+  font-size: 0.82rem;
+  display: block;
+  margin-top: 0.1rem;
+}
+
+.choice-label {
+  font-size: 0.78rem;
+  color: var(--muted);
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.choice-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.category-note {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* draggable course chip -- used both in the requirements list and search results.
+   Blue is reserved for "this is a class"; red is reserved for an unmet
+   prerequisite/corequisite (see .requisite-warning) so the two never mean
+   the same thing at a glance. */
+.course-chip {
+  display: inline-block;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--course-soft);
+  color: var(--course);
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  cursor: grab;
+  font-size: 0.85rem;
+}
+
+.course-chip.scheduled {
+  cursor: default;
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.search-results-heading {
+  margin: 0 0 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+/* ---------------- expandable elective/gen-ed category ---------------- */
+
+.category-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.category-options {
+  margin-top: 0.5rem;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.category-halves {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.category-bucket h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.category-bucket + .category-bucket { margin-top: 0.6rem; }
+
+.category-course-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 12rem;
+  overflow-y: auto;
+}
+
+/* ---------------- 5-column search results table ---------------- */
+
+.search-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+}
+
+.search-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.search-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.search-table td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.search-row { cursor: grab; }
+.search-row:hover td { background: var(--course-soft); }
+
+.search-row.scheduled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.search-row.scheduled:hover td { background: none; }
+
+.search-cell-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--course);
+  white-space: nowrap;
+}
+
+.search-cell-desc { max-width: 34ch; }
+.search-cell-prereq { max-width: 22ch; color: var(--muted); font-size: 0.78rem; }
+.search-cell-tags { max-width: 16ch; color: var(--muted); font-size: 0.78rem; }
+.search-cell-credits { white-space: nowrap; text-align: right; color: var(--muted); }
+
+/* ---------------- sidebar footer / light-dark theme switch ---------------- */
+
+.footer-disclaimer {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.4;
+  max-width: 60ch;
+}
+
+.footer-terms-link {
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+}
+
+.footer-terms-link:hover { color: var(--accent); }
+
+.theme-switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.theme-switch-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.theme-switch {
+  display: block;
+  cursor: pointer;
+}
+
+.theme-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.theme-switch-track {
+  display: flex;
+  align-items: center;
+  width: 3rem;
+  height: 1.6rem;
+  border-radius: 999px;
+  background: var(--muted);
+  padding: 0.15rem;
+  transition: background-color 0.15s ease;
+}
+
+.theme-switch input:checked + .theme-switch-track {
+  background: var(--accent);
+}
+
+.theme-switch-thumb {
+  width: 1.3rem;
+  height: 1.3rem;
+  border-radius: 50%;
+  background: var(--panel);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s ease;
+}
+
+.theme-switch input:checked ~ .theme-switch-track .theme-switch-thumb {
+  transform: translateX(1.4rem);
+}
+
+/* ---------------- draggable column resizer ---------------- */
+
+.column-resizer {
+  flex: 0 0 10px;
+  cursor: col-resize;
+  position: relative;
+}
+
+.column-resizer::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 2.5rem;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.column-resizer:hover::after,
+.column-resizer.dragging::after {
+  background: var(--accent);
+}
+
+/* ---------------- two-column requirement sections ---------------- */
+
+.section-columns {
+  column-count: 2;
+  column-gap: 1rem;
+}
+
+.section-columns .section-card {
+  break-inside: avoid;
+}
+
+/* ---------------- combined course codes (e.g. "CE 2710 & CE 2720") ---------------- */
+
+.combo-chips {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.combo-amp {
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 0.78rem;
+}
+
+/* ---------------- rich hover tooltip ---------------- */
+
+.course-tooltip {
+  position: fixed;
+  z-index: 100;
+  max-width: 26rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  font-size: 0.78rem;
+  color: var(--text);
+  pointer-events: none;
+}
+
+.tooltip-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--course);
+  margin-bottom: 0.3rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.tooltip-credits { color: var(--muted); font-weight: 600; }
+
+.tooltip-desc {
+  margin-bottom: 0.4rem;
+  color: var(--text);
+}
+
+.tooltip-row {
+  color: var(--muted);
+  margin-top: 0.2rem;
+}
+
+.tooltip-row strong { color: var(--text); }
+
+.tooltip-warning {
+  margin-top: 0.4rem;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* ---------------- top nav (sleek, top-right) ---------------- */
+
+.top-nav {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.9rem 1.5rem 0.6rem;
+  /* transparent on purpose, like the old tab bar -- lets the topo
+     background show through behind the nav instead of a solid panel bar */
+  background: none;
+  border-bottom: none;
+}
+
+.top-nav-cluster {
+  display: flex;
+  align-items: center;
+  gap: 1.6rem;
+}
+
+.nav-link {
+  border: none;
+  background: none;
+  padding: 0.3rem 0.1rem;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.92rem;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  position: relative;
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.2rem;
+  height: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform 0.15s ease;
+}
+
+.nav-link:hover { color: var(--text); }
+.nav-link.active { color: var(--text); }
+.nav-link.active::after { transform: scaleX(1); }
+
+/* ---------------- bottom bar / light-dark theme switch ---------------- */
+
+.bottom-bar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.4rem 1.25rem;
+  border-top: 1px solid var(--border);
+  /* semi-transparent so the topo background shows through slightly here too */
+  background: color-mix(in srgb, var(--panel) 85%, transparent);
+}
+
+/* ---------------- About view ---------------- */
+
+.about-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1.25rem;
+}
+
+.about-card {
+  width: min(560px, 100%);
+  text-align: center;
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 2.25rem 2.5rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  height: fit-content;
+}
+
+.about-avatar {
+  width: 6.5rem;
+  height: 6.5rem;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  margin-bottom: 1rem;
+}
+
+.about-card h2 { margin: 0 0 1rem; }
+.about-card p { text-align: left; line-height: 1.5; margin: 0 0 1rem; }
+
+.about-linkedin-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  background: var(--course);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.about-linkedin-link:hover { filter: brightness(1.08); }
+
+/* Views (the two tab panels): only the active one is shown, filling all
+   space between the tab bar and the bottom bar -- switching tabs never
+   navigates to a new page, it just toggles which view is visible. */
+.view {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.view[hidden] { display: none; }
+
+/* Classes Connected gets a plain black backdrop, not the topo image -- the
+   graph itself is already busy enough with ~3,000 nodes/edges. */
+#web-view { background: #050505; }
+
+/* ---------------- the web (prerequisite graph) view ---------------- */
+
+.web-header {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+}
+
+.web-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.web-search {
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  width: 420px;
+}
+
+.web-filter-mount { min-width: 220px; }
+
+.web-filter-clear-btn {
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.5rem 0.8rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.web-filter-clear-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.web-path-input {
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  width: 220px;
+}
+
+.web-path-arrow { color: var(--muted); font-weight: 700; }
+
+.web-path-result {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  max-width: 46ch;
+}
+
+.web-main {
+  display: flex;
+  min-height: 0;
+}
+
+.web-canvas-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#graph-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+/* ---------------- ranking panel (most-connected classes) ---------------- */
+
+.ranking-panel {
+  flex: 0 0 320px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.ranking-header {
+  flex: 0 0 auto;
+  padding: 0.85rem 1rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ranking-header h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+}
+
+.ranking-sort-row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.ranking-sort-btn {
+  flex: 1 1 0;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--muted);
+  border-radius: 6px;
+  padding: 0.3rem 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ranking-sort-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.ranking-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.ranking-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: none;
+  padding: 0.4rem 1rem;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  color: var(--text);
+}
+
+.ranking-row:hover { background: var(--accent-soft); }
+.ranking-row.active { background: var(--gold-soft); }
+
+.ranking-rank {
+  flex: 0 0 1.8rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.ranking-code {
+  flex: 1 1 auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--course);
+  font-size: 0.85rem;
+}
+
+.ranking-count {
+  flex: 0 0 2.2rem;
+  text-align: right;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.ranking-count.current {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.web-hint {
+  position: absolute;
+  left: 1rem;
+  bottom: 1rem;
+  margin: 0;
+  padding: 0.3rem 0.7rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.web-legend {
+  position: absolute;
+  right: 1rem;
+  bottom: 1rem;
+  width: 15rem;
+  padding: 0.75rem 0.9rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.web-legend-title { margin: 0 0 0.3rem; font-weight: 700; }
+.web-legend-desc { margin: 0 0 0.55rem; color: var(--muted); line-height: 1.35; }
+
+.web-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+}
+
+.web-legend-swatch {
+  flex: 0 0 auto;
+  width: 1.4rem;
+  height: 0;
+  border-top-width: 2px;
+  border-top-style: solid;
+}
+
+.web-legend-prereq { border-color: var(--gold); }
+.web-legend-coreq { border-color: var(--gold); border-top-style: dashed; }
+.web-legend-cross { border-color: var(--course); }
+.web-legend-related { border-color: var(--muted); border-top-style: dotted; }
+
+/* ---------------- Help modal ---------------- */
+
+.help-feedback-section {
+  border-top: 1px solid var(--border);
+}
+
+.help-feedback-heading {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.help-feedback-item {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  text-align: left;
+  border-radius: 8px;
+  padding: 0.55rem 0.8rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.help-feedback-item:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+/* ---------------- modals (export + feedback) ---------------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.modal-overlay[hidden] { display: none; }
+
+.modal-box {
+  width: min(440px, 90vw);
+  background: var(--panel);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+
+/* The terms modal is real prose, not a short form -- wider box, and the
+   body scrolls internally rather than growing past the viewport. */
+.modal-box-wide { width: min(640px, 92vw); }
+
+.modal-body-scroll {
+  max-height: 70vh;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.modal-body-scroll p { margin: 0 0 0.85rem; }
+.modal-body-scroll p:last-child { margin-bottom: 0; }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 { margin: 0; font-size: 1.05rem; }
+
+.modal-close {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.25rem;
+}
+
+.modal-close:hover { color: var(--accent); }
+
+.modal-body {
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.modal-choice-btn {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+  font-size: 0.92rem;
+  cursor: pointer;
+}
+
+.modal-choice-btn:hover { background: var(--accent-soft); border-color: var(--accent); }
+
+.modal-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.modal-field input,
+.modal-field textarea {
+  font: inherit;
+  font-weight: 400;
+  padding: 0.5rem 0.6rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+
+.modal-submit-btn {
+  padding: 0.6rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.modal-thanks {
+  margin: 0;
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* ---------------- export / cant-find-major buttons ---------------- */
+
+.export-btn {
+  margin-left: 0.5rem;
+}
+
+.cant-find-btn {
+  display: block;
+  margin: 0 auto 0.85rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid var(--danger);
+  background: none;
+  color: var(--danger);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cant-find-btn:hover { background: var(--danger-bg); }
