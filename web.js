@@ -31,6 +31,10 @@ const NODE_MAX_R = 20.0;
 const MIN_SCALE = 0.03;
 const MAX_SCALE = 10;
 const HOVER_PIXEL_RADIUS = 10;
+// A fingertip's effective contact precision is much coarser than a mouse
+// cursor's -- touch taps hit-test against this larger radius instead (see
+// the pointerup tap-to-pin handling in wireEvents()).
+const TOUCH_HIT_PIXEL_RADIUS = 22;
 
 let graph = { nodes: [], edges: [] };
 const nodeById = new Map();
@@ -47,6 +51,26 @@ let pinnedNode = null;
 let dragging = false;
 let dragMoved = false;
 let lastMouse = { x: 0, y: 0 };
+
+// ---------------- touch: pan + pinch-zoom via Pointer Events ----------------
+// pointerId -> last known {x, y} in client coordinates, for every pointer
+// currently down. Size 1 = panning (unified with the mouse-drag path
+// below); size 2 = pinch (see wireEvents()).
+const activePointers = new Map();
+let pinchStartDist = null;
+let pinchStartScale = null;
+let pinchStartWorldX = null;
+let pinchStartWorldY = null;
+
+function pointerMidpoint() {
+  const pts = [...activePointers.values()];
+  return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+}
+
+function pointerDistance() {
+  const pts = [...activePointers.values()];
+  return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+}
 
 // ---------------- filter by major/department ----------------
 // null filterCourseSet means "no major filter"; "" filterDept means "no
@@ -275,8 +299,8 @@ function render() {
   }
 }
 
-function findNodeNear(wx, wy) {
-  const worldRadius = HOVER_PIXEL_RADIUS / view.scale;
+function findNodeNear(wx, wy, pixelRadius = HOVER_PIXEL_RADIUS) {
+  const worldRadius = pixelRadius / view.scale;
   let closest = null;
   let closestDist = worldRadius;
   graph.nodes.forEach((n, i) => {
@@ -500,13 +524,67 @@ function clearPathHighlight() {
 }
 
 function wireEvents() {
-  canvas.addEventListener("mousedown", (e) => {
-    dragging = true;
-    dragMoved = false;
-    lastMouse = { x: e.clientX, y: e.clientY };
+  // Unified pointerdown/move/up/cancel drive both mouse-drag-to-pan (a
+  // drop-in behavioral replacement for the old mouse-only handlers) and
+  // touch pan/pinch-zoom -- see the module-level activePointers/pinchStart*
+  // state above. setPointerCapture keeps a fast gesture tracked even if a
+  // finger briefly slides outside the canvas's own bounds mid-move.
+  canvas.addEventListener("pointerdown", (e) => {
+    // Best-effort -- can throw in rare real-world edge cases (a pointer
+    // that's already gone by the time this runs), and the pan/pinch math
+    // below only listens on window anyway, so capture is a nice-to-have
+    // (keeps a fast gesture tracked past the canvas's own edge) rather than
+    // something the rest of this handler depends on.
+    try { canvas.setPointerCapture(e.pointerId); } catch { /* not critical, see above */ }
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size === 1) {
+      dragging = true;
+      dragMoved = false;
+      lastMouse = { x: e.clientX, y: e.clientY };
+    } else if (activePointers.size === 2) {
+      // A second finger just landed -- stop single-pointer panning and
+      // start tracking the pinch from here. Anchoring to the gesture's
+      // OWN start (not recomputed incrementally each move) avoids
+      // floating-point drift over a long pinch.
+      dragging = false;
+      const rect = canvas.getBoundingClientRect();
+      const mid = pointerMidpoint();
+      const world = screenToWorld(mid.x - rect.left, mid.y - rect.top);
+      pinchStartDist = pointerDistance();
+      pinchStartScale = view.scale;
+      pinchStartWorldX = world.x;
+      pinchStartWorldY = world.y;
+      hideTooltip();
+    }
   });
 
-  window.addEventListener("mousemove", (e) => {
+  window.addEventListener("pointermove", (e) => {
+    // Only update tracked position for pointers that are actually down --
+    // a hovering mouse (no button pressed) never fired pointerdown, so it
+    // never entered activePointers, and falls through to the hover-preview
+    // branch below exactly like the old mousemove handler did.
+    if (activePointers.has(e.pointerId)) activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.size >= 2) {
+      const rect = canvas.getBoundingClientRect();
+      const mid = pointerMidpoint();
+      const factor = pointerDistance() / pinchStartDist;
+      const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, pinchStartScale * factor));
+      // Solve view.x/y so the world point that was under the pinch's
+      // starting midpoint stays under the midpoint's current position --
+      // the same "keep the point under the gesture fixed" technique the
+      // wheel handler below uses for a mouse-wheel zoom, generalized to a
+      // (possibly moving) two-finger midpoint so pinch and 2-finger pan
+      // both fall out of one calculation.
+      view.scale = newScale;
+      view.x = (mid.x - rect.left) - pinchStartWorldX * newScale;
+      view.y = (mid.y - rect.top) - pinchStartWorldY * newScale;
+      dragMoved = true;
+      render();
+      return;
+    }
+
     if (dragging) {
       const dx = e.clientX - lastMouse.x;
       const dy = e.clientY - lastMouse.y;
@@ -519,6 +597,9 @@ function wireEvents() {
       return;
     }
 
+    // Hover preview -- mouse only. A touch contact always fires its own
+    // pointerdown before any pointermove, so this branch is unreachable
+    // for touch without needing an explicit pointerType check.
     const rect = canvas.getBoundingClientRect();
     if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
       if (hoveredNode !== null) {
@@ -538,14 +619,52 @@ function wireEvents() {
     else hideTooltip();
   });
 
-  window.addEventListener("mouseup", () => {
+  // pointercancel fires when the OS/browser interrupts a gesture mid-flight
+  // (e.g. an incoming call, or the browser reclaiming it for its own
+  // navigation gesture) -- handled identically to pointerup, or panning/
+  // pinching can get stuck thinking a pointer is still down.
+  function endPointer(e) {
+    activePointers.delete(e.pointerId);
+
+    if (activePointers.size === 1) {
+      // Dropped from a pinch back to a single finger -- resume panning
+      // from here instead of jumping via a stale lastMouse, and don't
+      // treat the eventual final lift as a tap (a real gesture already
+      // happened this touch sequence).
+      const [remaining] = activePointers.values();
+      dragging = true;
+      dragMoved = true;
+      lastMouse = { x: remaining.x, y: remaining.y };
+      pinchStartDist = null;
+      pinchStartScale = null;
+      return;
+    }
+
+    if (activePointers.size > 0) return; // still mid-gesture with other pointers down
+
     if (dragging && !dragMoved) {
-      pinnedNode = hoveredNode !== null && hoveredNode === pinnedNode ? null : hoveredNode;
+      // A genuine tap/click, not a drag or pinch -- pin (or unpin) the
+      // node under it AND show its info tooltip right here. Previously
+      // only a mouse click pinned a node without ever showing the tooltip
+      // itself (info only appeared via a separate hover side-channel), and
+      // touch had no equivalent at all -- this one path now covers both.
+      const rect = canvas.getBoundingClientRect();
+      const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
+      const isTouch = e.pointerType !== "mouse";
+      const found = findNodeNear(world.x, world.y, isTouch ? TOUCH_HIT_PIXEL_RADIUS : HOVER_PIXEL_RADIUS);
+      pinnedNode = found !== null && found === pinnedNode ? null : found;
       render();
       renderRankingList();
+      if (found !== null) showTooltip(found, e.clientX, e.clientY);
+      else hideTooltip();
     }
     dragging = false;
-  });
+    dragMoved = false;
+    pinchStartDist = null;
+    pinchStartScale = null;
+  }
+  window.addEventListener("pointerup", endPointer);
+  window.addEventListener("pointercancel", endPointer);
 
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -592,6 +711,47 @@ function wireEvents() {
       if (e.key === "Enter") runPathFinder();
     });
   }
+
+  // Below 900px both the ranking panel (a fixed off-canvas drawer) and the
+  // search/filter/path-finder controls (a drop-down overlay) default to
+  // closed, each toggled by its own button in the slim always-visible
+  // .web-toolbar, and closed by tapping anywhere outside an open one --
+  // see style.css for what "open" looks like for each. Opening either one
+  // closes the other, so they never end up both open and overlapping.
+  const rankingPanel = document.getElementById("ranking-panel");
+  const rankingToggleBtn = document.getElementById("ranking-panel-toggle-btn");
+  const controlsPanel = document.getElementById("web-controls-panel");
+  const controlsToggleBtn = document.getElementById("web-controls-toggle-btn");
+
+  function setPanelOpen(panel, toggleBtn, open) {
+    panel.classList.toggle("open", open);
+    toggleBtn.classList.toggle("active", open);
+  }
+
+  rankingToggleBtn.addEventListener("click", () => {
+    const opening = !rankingPanel.classList.contains("open");
+    setPanelOpen(rankingPanel, rankingToggleBtn, opening);
+    if (opening) setPanelOpen(controlsPanel, controlsToggleBtn, false);
+  });
+  controlsToggleBtn.addEventListener("click", () => {
+    const opening = !controlsPanel.classList.contains("open");
+    setPanelOpen(controlsPanel, controlsToggleBtn, opening);
+    if (opening) setPanelOpen(rankingPanel, rankingToggleBtn, false);
+  });
+  document.addEventListener("click", (e) => {
+    if (rankingPanel.classList.contains("open")
+      && !rankingPanel.contains(e.target) && e.target !== rankingToggleBtn) {
+      setPanelOpen(rankingPanel, rankingToggleBtn, false);
+    }
+    if (controlsPanel.classList.contains("open")
+      && !controlsPanel.contains(e.target) && e.target !== controlsToggleBtn) {
+      setPanelOpen(controlsPanel, controlsToggleBtn, false);
+    }
+  });
+
+  document.getElementById("web-legend-toggle-btn").addEventListener("click", () => {
+    document.getElementById("web-legend").classList.toggle("collapsed");
+  });
 }
 
 let webInitialized = false;
@@ -653,6 +813,12 @@ async function ensureWebInitialized() {
   fitView();
   wireEvents();
   wireRankingSort();
+  // Phone-tier default: the legend starts collapsed to its title only (see
+  // the matching CSS media query) -- only sets the initial state, the
+  // toggle button (wired in wireEvents()) governs it from here on.
+  if (window.matchMedia("(max-width: 480px)").matches) {
+    document.getElementById("web-legend").classList.add("collapsed");
+  }
   render();
   renderRankingList();
   document.getElementById("web-hint").textContent =

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Iowa State Degree Planning</title>
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="style.css?v=20260804l">
 </head>
 <body>
 <header class="top-nav">
@@ -199,8 +199,27 @@
     </div>
   </div>
 
+  <!-- Shared course-detail modal: a tap-friendly alternative to the
+       hover-only tooltip, for the two chip/row surfaces that don't already
+       have their own Description/Pre-Co-reqs buttons (see renderPlacedChip()
+       in app.js for the surface that does). -->
+  <div class="modal-overlay" id="course-info-modal" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="course-info-modal-title">Course</h3>
+        <button type="button" class="modal-close" id="course-info-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="course-info-modal-body"></div>
+    </div>
+  </div>
+
   <main>
     <section id="landing" class="landing">
+      <!-- Animated birds backdrop (landing-bg.js) -- only ever mounted while
+           this screen is actually visible, and skipped entirely for anyone
+           who prefers reduced motion. Sits behind everything else here
+           purely by DOM order (first child, no explicit z-index needed). -->
+      <div id="vanta-landing-bg" class="vanta-landing-bg" aria-hidden="true"></div>
       <img class="isu-logo" src="assets/isu-logo.png" alt="Iowa State University seal">
       <div class="landing-card-wrap">
         <div class="landing-inner">
@@ -251,6 +270,7 @@
     </section>
 
     <div id="app" class="app-columns" hidden>
+      <p id="tap-place-hint" hidden></p>
       <section class="semester-column" id="semester-column" aria-label="Your schedule">
         <div class="semester-list" id="semester-list"></div>
         <div class="semester-footer">
@@ -277,25 +297,34 @@
 
 <div id="web-view" class="view" hidden>
   <header class="web-header">
-    <div class="web-header-row">
-      <input type="search" id="web-search" class="web-search" placeholder="Find a course, e.g. &quot;MATH 1660&quot;… (press Enter)" autocomplete="off">
-      <div class="searchable-select-mount web-filter-mount" id="web-major-filter-mount" title="Dim every course not part of this program"></div>
-      <select id="web-major-filter" hidden>
-        <option value="">All majors / minors</option>
-      </select>
-      <div class="searchable-select-mount web-filter-mount" id="web-dept-filter-mount" title="Dim every course outside this department"></div>
-      <select id="web-dept-filter" hidden>
-        <option value="">All departments</option>
-      </select>
-      <button type="button" id="web-clear-filters-btn" class="web-filter-clear-btn" hidden>Clear Filters</button>
+    <!-- Always-visible slim toolbar (only rendered as a distinct bar below
+         900px -- see style.css). Above 900px the full controls panel is
+         just always shown in place, same as before this existed. -->
+    <div class="web-toolbar">
+      <button type="button" id="ranking-panel-toggle-btn" class="web-toolbar-btn">Most Connected Classes</button>
+      <button type="button" id="web-controls-toggle-btn" class="web-toolbar-btn">Search &amp; Filters</button>
     </div>
-    <div class="web-header-row">
-      <input type="text" id="web-path-from" class="web-path-input" placeholder="From course, e.g. &quot;MATH 1650&quot;" autocomplete="off">
-      <span class="web-path-arrow" aria-hidden="true">→</span>
-      <input type="text" id="web-path-to" class="web-path-input" placeholder="To course, e.g. &quot;MATH 2670&quot;" autocomplete="off">
-      <button type="button" id="web-path-find-btn" class="web-filter-clear-btn">Find Prereq Path</button>
-      <button type="button" id="web-path-clear-btn" class="web-filter-clear-btn" hidden>Clear Path</button>
-      <p class="web-path-result" id="web-path-result"></p>
+    <div class="web-controls-panel" id="web-controls-panel">
+      <div class="web-header-row">
+        <input type="search" id="web-search" class="web-search" placeholder="Find a course, e.g. &quot;MATH 1660&quot;… (press Enter)" autocomplete="off">
+        <div class="searchable-select-mount web-filter-mount" id="web-major-filter-mount" title="Dim every course not part of this program"></div>
+        <select id="web-major-filter" hidden>
+          <option value="">All majors / minors</option>
+        </select>
+        <div class="searchable-select-mount web-filter-mount" id="web-dept-filter-mount" title="Dim every course outside this department"></div>
+        <select id="web-dept-filter" hidden>
+          <option value="">All departments</option>
+        </select>
+        <button type="button" id="web-clear-filters-btn" class="web-filter-clear-btn" hidden>Clear Filters</button>
+      </div>
+      <div class="web-header-row">
+        <input type="text" id="web-path-from" class="web-path-input" placeholder="From course, e.g. &quot;MATH 1650&quot;" autocomplete="off">
+        <span class="web-path-arrow" aria-hidden="true">→</span>
+        <input type="text" id="web-path-to" class="web-path-input" placeholder="To course, e.g. &quot;MATH 2670&quot;" autocomplete="off">
+        <button type="button" id="web-path-find-btn" class="web-filter-clear-btn">Find Prereq Path</button>
+        <button type="button" id="web-path-clear-btn" class="web-filter-clear-btn" hidden>Clear Path</button>
+        <p class="web-path-result" id="web-path-result"></p>
+      </div>
     </div>
   </header>
   <main class="web-main">
@@ -317,12 +346,14 @@
       <div id="web-tooltip" class="course-tooltip" hidden></div>
       <p class="web-hint" id="web-hint">Loading the web…</p>
       <div class="web-legend" id="web-legend">
-        <p class="web-legend-title">What am I looking at?</p>
-        <p class="web-legend-desc">Each dot is a course -- bigger dots have more connections. A line means two courses are connected:</p>
-        <div class="web-legend-row"><span class="web-legend-swatch web-legend-prereq"></span> Prerequisite</div>
-        <div class="web-legend-row"><span class="web-legend-swatch web-legend-coreq"></span> Corequisite</div>
-        <div class="web-legend-row"><span class="web-legend-swatch web-legend-cross"></span> Cross-listed / equivalent</div>
-        <div class="web-legend-row"><span class="web-legend-swatch web-legend-related"></span> Related (mentioned together)</div>
+        <button type="button" class="web-legend-title" id="web-legend-toggle-btn">What am I looking at?</button>
+        <div class="web-legend-body">
+          <p class="web-legend-desc">Each dot is a course -- bigger dots have more connections. A line means two courses are connected:</p>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-prereq"></span> Prerequisite</div>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-coreq"></span> Corequisite</div>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-cross"></span> Cross-listed / equivalent</div>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-related"></span> Related (mentioned together)</div>
+        </div>
       </div>
     </div>
   </main>
@@ -365,10 +396,15 @@
   </div>
 </footer>
 
-<!-- ?v= busts browser/http.server caching -- bump the date on any JS edit -->
-<script src="theme.js?v=20260804"></script>
-<script src="app.js?v=20260804"></script>
-<script src="web.js?v=20260804"></script>
-<script src="tabs.js?v=20260804"></script>
+<!-- ?v= busts browser/http.server caching -- bump this on any JS/CSS edit -->
+<!-- Vendored locally (not from a CDN) to match the rest of this site --
+     three.js r134 is the version Vanta's own docs pair with vanta.birds. -->
+<script src="assets/vendor/three.r134.min.js"></script>
+<script src="assets/vendor/vanta.birds.min.js"></script>
+<script src="theme.js?v=20260804l"></script>
+<script src="app.js?v=20260804l"></script>
+<script src="web.js?v=20260804l"></script>
+<script src="tabs.js?v=20260804l"></script>
+<script src="landing-bg.js?v=20260804l"></script>
 </body>
 </html>
