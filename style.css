@@ -104,7 +104,10 @@ body {
   display: flex;
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #050505 url("assets/topo-background.jpg") center center / cover fixed no-repeat;
+  /* Plain black everywhere except the landing screen, which replaces this
+     with the animated birds backdrop (see .landing/.vanta-landing-bg and
+     landing-bg.js) -- the old static topo-background.jpg image is gone. */
+  background: #000;
   color: var(--text);
   line-height: 1.4;
 }
@@ -114,7 +117,7 @@ header {
   padding: 0.85rem 1.25rem;
   border-bottom: 1px solid var(--border);
   /* solid, not transparent like the tab-bar/bottom-bar -- this row is dense
-     with labels and buttons that need to stay legible over the topo backdrop */
+     with labels and buttons that need to stay legible over the dark backdrop */
   background: var(--panel);
 }
 
@@ -245,6 +248,7 @@ main {
 }
 
 .landing {
+  position: relative;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -253,16 +257,50 @@ main {
   min-height: 0;
 }
 
+/* The animated birds backdrop (landing-bg.js) -- absolutely positioned so
+   it fills .landing as a full-bleed canvas without taking part in the flex
+   layout below, which is why the actual content needs its own
+   position:relative + z-index:1 (an absolutely-positioned sibling would
+   otherwise paint above static in-flow content regardless of DOM order).
+   pointer-events:none so it can never intercept clicks on the card even if
+   that stacking ever changes -- Vanta's own mouse-avoidance tracking reads
+   from window-level mousemove, not this element's own pointer events. */
+.vanta-landing-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.isu-logo,
+.landing-card-wrap {
+  position: relative;
+  z-index: 1;
+}
+
 /* Fills whatever vertical space is left below the logo and centers the
    question card within just that space, so the logo stays anchored near
-   the top regardless of how tall the card is. */
+   the top regardless of how tall the card is -- EXCEPT when the card
+   (Second Major/Minor/Masters/Honors + the "Create a Schedule" button, once
+   a major's picked) is taller than the space available, most commonly on a
+   phone: plain `align-items:center` on an overflowing flex item clips it
+   equally off BOTH ends with no way to scroll to either one, which is
+   exactly what made the submit button unreachable. `overflow-y:auto` plus
+   `align-items:safe center` (falls back to top-aligned + scrollable instead
+   of centering when it doesn't fit -- supported in all current browsers;
+   the plain `flex-start` line above it is the fallback for the rare browser
+   that doesn't understand the `safe` keyword) fixes that while keeping the
+   nicer centered look on any screen tall enough for it. */
 .landing-card-wrap {
   flex: 1 1 auto;
   min-height: 0;
   width: 100%;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  align-items: safe center;
   justify-content: center;
+  overflow-y: auto;
+  padding: 1rem 0;
 }
 
 .landing-inner {
@@ -382,12 +420,14 @@ main {
 }
 
 .app-columns {
+  position: relative;
   flex: 1 1 auto;
   display: flex;
   gap: 1rem;
   padding: 0.85rem 1.25rem;
   min-height: 0;
   overflow: hidden;
+  background: #000;
 }
 
 .semester-column {
@@ -525,7 +565,8 @@ main {
   background: var(--gold-soft);
 }
 
-.remove-summer-btn {
+.remove-summer-btn,
+.clear-semester-btn {
   border: none;
   background: none;
   color: var(--muted);
@@ -534,6 +575,8 @@ main {
   text-decoration: underline;
   padding: 0;
 }
+
+.clear-semester-btn:hover { color: var(--danger); }
 
 .semester-course-list {
   list-style: none;
@@ -843,7 +886,9 @@ main {
    prerequisite/corequisite (see .requisite-warning) so the two never mean
    the same thing at a glance. */
 .course-chip {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
   font-weight: 600;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   background: var(--course-soft);
@@ -858,6 +903,39 @@ main {
   cursor: default;
   opacity: 0.45;
   text-decoration: line-through;
+}
+
+.course-chip.selected-for-place {
+  outline: 2px solid var(--accent);
+  background: var(--accent-soft);
+}
+
+/* Tap-to-place: a touch-friendly alternative to dragging a course into a
+   semester -- tap a chip/search-row to select it (this highlight), then tap
+   a semester to place it there. Plain click listeners, so it works
+   identically for mouse and touch and never interferes with the existing
+   HTML5 drag-and-drop (a real drag never fires a trailing click). */
+#tap-place-hint {
+  position: absolute;
+  left: 50%;
+  top: 0.6rem;
+  transform: translateX(-50%);
+  z-index: 20;
+  margin: 0;
+  padding: 0.35rem 0.9rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+#tap-place-hint[hidden] { display: none; }
+
+body.tap-place-active .semester-course-list:not(.drag-over) {
+  background: var(--accent-soft);
+  outline: 1px dashed var(--accent);
 }
 
 .search-results-heading {
@@ -953,6 +1031,13 @@ main {
 }
 
 .search-row.scheduled:hover td { background: none; }
+
+.search-row.selected-for-place td {
+  background: var(--accent-soft);
+  box-shadow: inset 0 2px 0 var(--accent), inset 0 -2px 0 var(--accent);
+}
+
+.search-code-wrap { display: inline-flex; align-items: center; gap: 0.3rem; }
 
 .search-cell-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1260,11 +1345,46 @@ main {
 
 .view[hidden] { display: none; }
 
-/* Classes Connected gets a plain black backdrop, not the topo image -- the
-   graph itself is already busy enough with ~3,000 nodes/edges. */
-#web-view { background: #050505; }
+/* Every view except the landing screen (which has the animated birds
+   backdrop instead, see .vanta-landing-bg) gets a plain black background --
+   explicit here rather than left to inherit body's black, so each is
+   correct on its own regardless of what body ends up doing. */
+#about-view { background: #000; }
 
 /* ---------------- the web (prerequisite graph) view ---------------- */
+
+/* Classes Connected's canvas is unconditionally black regardless of the
+   site's light/dark toggle (it's busy enough on its own without a light
+   background fighting it) -- but its search/filter/path-finder controls,
+   tooltip, ranking panel, and legend all use the same var(--bg)/var(--text)/
+   etc. custom properties as the rest of the site, which DO follow that
+   toggle. Left alone, that meant light mode rendered this whole page as
+   white UI islands stranded on a black backdrop -- a jarring mismatch, and
+   a real part of what read as "looks horrible." Pinning the dark-theme
+   values here, scoped to this view only, makes every one of those
+   components resolve to the same dark palette the black backdrop already
+   uses, with no changes needed to any individual component's own CSS since
+   they all already reference these variables. */
+#web-view {
+  --bg: #14141c;
+  --panel: #1d1d29;
+  --border: #2e2e3d;
+  --text: #e7e7f0;
+  --muted: #9497a6;
+  --accent: #ef4453;
+  --accent-soft: #3a1418;
+  --gold: #f1be48;
+  --gold-soft: #3a300f;
+  --course: #60a5fa;
+  --course-soft: #1e2a4a;
+  --ok: #4ade80;
+  --ok-bg: #123723;
+  --warn: #fbbf24;
+  --warn-bg: #3a2f10;
+  --danger: #f87171;
+  --danger-bg: #3a1414;
+  background: #000;
+}
 
 .web-header {
   flex: 0 0 auto;
@@ -1273,6 +1393,40 @@ main {
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0;
+}
+
+/* Only actually shown as a distinct slim bar below 900px (see the media
+   query further down) -- above that width the full controls panel is just
+   always visible in place, exactly as before this toolbar existed, so
+   these two toggle buttons have nothing to toggle and stay hidden. */
+.web-toolbar {
+  display: none;
+  gap: 0.6rem;
+  width: 100%;
+  justify-content: center;
+}
+
+.web-toolbar-btn {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.web-toolbar-btn:hover,
+.web-toolbar-btn.active { background: var(--accent-soft); border-color: var(--accent); }
+
+.web-controls-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .web-header-row {
@@ -1290,10 +1444,10 @@ main {
   background: var(--bg);
   color: var(--text);
   font-size: 0.9rem;
-  width: 420px;
+  width: min(420px, 100%);
 }
 
-.web-filter-mount { min-width: 220px; }
+.web-filter-mount { min-width: min(220px, 100%); flex: 1 1 160px; }
 
 .web-filter-clear-btn {
   border: 1px solid var(--border);
@@ -1316,7 +1470,7 @@ main {
   background: var(--bg);
   color: var(--text);
   font-size: 0.85rem;
-  width: 220px;
+  width: min(220px, 45vw);
 }
 
 .web-path-arrow { color: var(--muted); font-weight: 700; }
@@ -1329,6 +1483,7 @@ main {
 }
 
 .web-main {
+  position: relative;
   display: flex;
   min-height: 0;
 }
@@ -1344,6 +1499,10 @@ main {
   width: 100%;
   height: 100%;
   cursor: grab;
+  /* Stops the browser's own touch-scroll/pinch-zoom gesture from fighting
+     the custom pointer-based pan/pinch handling in web.js -- safe since the
+     page itself never scrolls (html,body{overflow:hidden} above). */
+  touch-action: none;
 }
 
 /* ---------------- ranking panel (most-connected classes) ---------------- */
@@ -1356,6 +1515,12 @@ main {
   border-right: 1px solid var(--border);
   background: var(--panel);
 }
+
+/* Below the 900px breakpoint (see the stacking media query further down)
+   this same panel becomes a fixed off-canvas drawer instead of a permanent
+   sidebar -- toggled via #ranking-panel-toggle-btn, which only renders at
+   that width. */
+#ranking-panel-toggle-btn { display: none; }
 
 .ranking-header {
   flex: 0 0 auto;
@@ -1445,6 +1610,10 @@ main {
   position: absolute;
   left: 1rem;
   bottom: 1rem;
+  /* Capped so its (fairly long) live node/edge-count text can never grow
+     wide enough to run into .web-legend sitting at the opposite corner --
+     it wraps to a second line on a narrow canvas instead. */
+  max-width: min(28rem, calc(100% - 2rem - 11rem));
   margin: 0;
   padding: 0.3rem 0.7rem;
   background: var(--panel);
@@ -1459,7 +1628,7 @@ main {
   position: absolute;
   right: 1rem;
   bottom: 1rem;
-  width: 15rem;
+  width: min(15rem, 60vw);
   padding: 0.75rem 0.9rem;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -1468,7 +1637,26 @@ main {
   color: var(--text);
 }
 
-.web-legend-title { margin: 0 0 0.3rem; font-weight: 700; }
+/* Reuses the .category-toggle button pattern (full-width, no chrome, plain
+   text) so the title row is itself the tap target for collapsing/expanding
+   the legend body -- see the phone-tier media query further down for the
+   default-collapsed state. */
+.web-legend-title {
+  width: 100%;
+  margin: 0 0 0.3rem;
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 700;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.web-legend.collapsed .web-legend-body { display: none; }
+.web-legend.collapsed .web-legend-title { margin-bottom: 0; }
+
 .web-legend-desc { margin: 0 0 0.55rem; color: var(--muted); line-height: 1.35; }
 
 .web-legend-row {
@@ -1519,13 +1707,26 @@ main {
 
 /* ---------------- modals (export + feedback) ---------------- */
 
+/* Same overflow problem/fix as .landing-card-wrap above, and a more severe
+   version of it: the Help modal in particular (long instructions + a
+   feedback-shortcuts section, modal-box-wide) can be taller than a phone's
+   whole viewport. Plain `align-items:center` on the box then clipped it
+   equally off both the top AND bottom with no scroll to reach either end --
+   including the header's own close (X) button, which is how "can't get out
+   of the Help modal" happened: that button was rendering above y=0, off
+   the top of the screen entirely. `safe center` + `overflow-y:auto` here
+   makes the WHOLE overlay scrollable when its content doesn't fit, so the
+   header (and its close button) stays reachable by scrolling up to it. */
 .modal-overlay {
   position: fixed;
   inset: 0;
   z-index: 50;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  align-items: safe center;
   justify-content: center;
+  overflow-y: auto;
+  padding: 1.5rem 0.75rem;
   background: rgba(0, 0, 0, 0.45);
 }
 
@@ -1658,3 +1859,172 @@ main {
 }
 
 .cant-find-btn:hover { background: var(--danger-bg); }
+
+/* ==================== responsive layout: phones & tablets ==================== */
+
+/* Below this width there isn't enough room for the planner's schedule +
+   requirements two-column layout (roughly min(460px, 36vw) semester column +
+   MIN_BROWSE_COLUMN_WIDTH, 380px in app.js, + gap/padding), nor for Classes
+   Connected's permanent 320px ranking sidebar next to the graph canvas --
+   both switch to a stacked/drawer layout instead. */
+@media (max-width: 900px) {
+  /* Stacked mode makes .app-columns itself the one scroll container --
+     schedule panel, then requirements panel, in normal document flow --
+     rather than trying to give each panel its own independently-scrolling
+     fixed-height slice the way the desktop side-by-side layout does. Giving
+     both nested scroll regions a fair fixed split only works when there's
+     ample vertical space; on a phone (especially with the summary bar
+     already wrapping to 2-3 lines above this) that split can get squeezed
+     to near-zero for one side -- letting everything size to its own
+     content and scrolling the outer container avoids that fight entirely. */
+  .app-columns {
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .semester-column {
+    flex: 0 0 auto;
+    max-height: none;
+  }
+
+  .semester-list {
+    overflow-y: visible;
+    flex: 0 0 auto;
+  }
+
+  .browse-column {
+    flex: 0 0 auto;
+    min-height: 0;
+  }
+
+  .browse-scroll {
+    overflow-y: visible;
+    flex: 0 0 auto;
+  }
+
+  /* Nothing to resize once the columns are stacked instead of side by side
+     -- see the initColumnResizer() guard in app.js that stops a saved pixel
+     width from fighting this rule via inline style. */
+  .column-resizer { display: none; }
+
+  /* Both of these are 2-up layouts that don't fit a phone/tablet-width
+     stack -- collapse to a single column. */
+  .section-columns { column-count: 1; }
+  .category-halves { grid-template-columns: 1fr; }
+
+  .top-nav-cluster {
+    flex-wrap: wrap;
+    row-gap: 0.4rem;
+    gap: 0.9rem;
+  }
+
+  /* The ranking sidebar becomes an off-canvas drawer instead of a permanent
+     column, toggled by #ranking-panel-toggle-btn (display:none above this
+     width, see the base rule near .ranking-panel). The box-shadow spread on
+     .open dims the rest of the screen with no separate backdrop element --
+     safe since html,body{overflow:hidden} already clips it to the viewport.
+     position:absolute scoped to .web-main (not position:fixed spanning the
+     whole viewport) so the drawer starts right below the always-visible
+     .web-toolbar instead of sliding out from underneath/behind it -- the
+     two rendering at the same vertical position was producing a doubled,
+     overlapping "Most Connected Classes" header. */
+  #ranking-panel-toggle-btn { display: inline-flex; align-items: center; }
+
+  .ranking-panel {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 45;
+    flex: 0 0 auto;
+    width: min(320px, 80vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .ranking-panel.open {
+    transform: translateX(0);
+    box-shadow: 0 0 0 100vmax rgba(0, 0, 0, 0.45);
+  }
+
+  /* With ~9 controls across both header rows (search, 2 filters, clear
+     button, path-from/arrow/path-to, find/clear-path buttons, result text),
+     always showing the full panel left it either taking 40% of a phone
+     screen or, wrapped even more tightly, still eating most of it -- there
+     just isn't room for "power user" controls to sit permanently visible
+     next to a graph that's the whole point of the page. Below 900px the
+     panel becomes a collapsed-by-default overlay instead: only the slim
+     .web-toolbar (two toggle buttons) stays always visible, and
+     .web-controls-panel drops down over the canvas from behind it only
+     when opened, so the canvas gets virtually the entire screen the rest
+     of the time. */
+  .web-header { position: relative; }
+
+  /* Above both .ranking-panel (z-index 45) and .web-controls-panel (40) --
+     the ranking drawer spans the full height from the very top of the
+     screen, which would otherwise cover these buttons (specifically
+     making it impossible to tap over to Search & Filters) once it's open. */
+  .web-toolbar {
+    position: relative;
+    z-index: 46;
+    display: flex;
+  }
+
+  .web-controls-panel {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 40;
+    padding: 0.75rem;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    max-height: 70vh;
+    overflow-y: auto;
+    opacity: 0;
+    transform: translateY(-8px);
+    pointer-events: none;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+
+  .web-controls-panel.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  }
+
+  /* The panel is now an overlay with the full screen width to work with
+     (not fighting the canvas for space), so the path-finder row can afford
+     to stack full-width instead of cramming two narrow inputs + an arrow +
+     a button onto one line (where the placeholder text was getting
+     truncated to "From course, e.g. "MATI). */
+  .web-controls-panel .web-header-row:nth-of-type(2) {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .web-path-input { width: 100%; }
+  .web-path-arrow { text-align: center; }
+}
+
+/* Phone tier -- secondary chrome tightens further. */
+@media (max-width: 480px) {
+  .web-legend { width: min(15rem, 70vw); }
+  .web-legend.collapsed { width: auto; }
+}
+
+/* Bigger tap targets whenever the input is a finger (regardless of window
+   width) or the layout has already stacked for a narrow viewport -- the
+   denser desktop-mouse sizing everywhere else is left untouched. Reference
+   scale: .view-schedule-btn / .major-typeahead / .modal-choice-btn, which
+   were already sized comfortably for touch. */
+@media (max-width: 900px), (pointer: coarse) {
+  .info-icon-btn { padding: 0.5rem; font-size: 1.1rem; }
+  .row-info-btn { padding: 0.45rem 0.75rem; font-size: 0.8rem; }
+  .grade-option-btn { min-width: 2.75rem; padding: 0.4rem 0.5rem; }
+  .chip-remove { padding: 0.4rem 0.6rem; }
+  .remove-summer-btn,
+  .clear-semester-btn,
+  .grade-clear-btn { display: inline-block; padding: 0.4rem 0; }
+}

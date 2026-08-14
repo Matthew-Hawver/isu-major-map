@@ -61,6 +61,15 @@ let courses = {};
 let requirementNotesByCode = {};
 let schedule = { activeSummers: [], courses: {}, grades: {}, honors: false, fifthYear: false };
 
+// Tap-to-place: a touch-friendly alternative to dragging a course chip/row
+// into a semester (native HTML5 drag-and-drop never fires on touchscreens).
+// Tapping an unplaced course sets this, then tapping a semester's course
+// list calls placeCourse() with it -- see selectCourseForPlacement() and
+// wireDropTarget() below. Plain clicks, so mouse users get this too, at no
+// cost to the existing drag-and-drop (a real drag never fires a trailing
+// click on its source element).
+let selectedCourseCode = null;
+
 async function loadData() {
   const [programsRes, coursesRes, mastersRes] = await Promise.all([
     fetch("data/programs.json"),
@@ -1270,11 +1279,41 @@ function attachCourseTooltip(el, code, extraLinesFn) {
   });
 }
 
+// Shows the same info as attachCourseTooltip()'s hover tooltip, but in a
+// modal -- used by the tap-friendly info-icon buttons added to available
+// chips/search rows below, since a hover-only tooltip has no touch
+// equivalent (renderPlacedChip()'s Description/Pre-Co-reqs buttons already
+// give scheduled courses a tap-friendly path, so this modal is only wired
+// up for the two not-yet-scheduled surfaces).
+function showCourseInfoModal(code, extraLines) {
+  document.getElementById("course-info-modal-title").textContent = code;
+  document.getElementById("course-info-modal-body").innerHTML = courseTooltipHTML(code, extraLines || []);
+  document.getElementById("course-info-modal").hidden = false;
+}
+
+function selectCourseForPlacement(code) {
+  selectedCourseCode = selectedCourseCode === code ? null : code;
+  document.body.classList.toggle("tap-place-active", !!selectedCourseCode);
+  const hint = document.getElementById("tap-place-hint");
+  hint.hidden = !selectedCourseCode;
+  if (selectedCourseCode) hint.textContent = `${selectedCourseCode} selected -- tap a semester to add it`;
+  renderAll();
+}
+
+function clearPlacementSelection() {
+  selectedCourseCode = null;
+  document.body.classList.remove("tap-place-active");
+  document.getElementById("tap-place-hint").hidden = true;
+}
+
 function renderAvailableChip(code) {
   const scheduledSlot = findScheduledSlot(code);
   const span = document.createElement("span");
   span.className = "course-chip";
-  span.textContent = code;
+
+  const label = document.createElement("span");
+  label.textContent = code;
+  span.appendChild(label);
 
   if (scheduledSlot) {
     span.classList.add("scheduled");
@@ -1284,6 +1323,20 @@ function renderAvailableChip(code) {
       e.dataTransfer.setData("text/plain", code);
       e.dataTransfer.effectAllowed = "copyMove";
     });
+    if (code === selectedCourseCode) span.classList.add("selected-for-place");
+    span.addEventListener("click", () => selectCourseForPlacement(code));
+
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.className = "info-icon-btn";
+    infoBtn.textContent = "ⓘ";
+    infoBtn.title = `${code} description and prerequisites`;
+    infoBtn.setAttribute("aria-label", `${code} details`);
+    infoBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showCourseInfoModal(code);
+    });
+    span.appendChild(infoBtn);
   }
   attachCourseTooltip(span, code, () => (scheduledSlot ? [`Already scheduled in ${slotMeta(scheduledSlot).label}`] : []));
   return span;
@@ -1625,17 +1678,41 @@ function renderSearchTable(codes) {
         e.dataTransfer.setData("text/plain", code);
         e.dataTransfer.effectAllowed = "copyMove";
       });
+      if (code === selectedCourseCode) tr.classList.add("selected-for-place");
+      tr.addEventListener("click", () => selectCourseForPlacement(code));
     }
     attachCourseTooltip(tr, code, () => (scheduledSlot ? [`Already scheduled in ${slotMeta(scheduledSlot).label}`] : []));
 
+    const codeTd = document.createElement("td");
+    codeTd.className = "search-cell-code";
+    const codeWrap = document.createElement("span");
+    codeWrap.className = "search-code-wrap";
+    const codeLabel = document.createElement("span");
+    codeLabel.textContent = scheduledSlot ? `✓ ${code}` : code;
+    codeWrap.appendChild(codeLabel);
+    if (!scheduledSlot) {
+      const infoBtn = document.createElement("button");
+      infoBtn.type = "button";
+      infoBtn.className = "info-icon-btn";
+      infoBtn.textContent = "ⓘ";
+      infoBtn.title = `${code} description and prerequisites`;
+      infoBtn.setAttribute("aria-label", `${code} details`);
+      infoBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        showCourseInfoModal(code);
+      });
+      codeWrap.appendChild(infoBtn);
+    }
+    codeTd.appendChild(codeWrap);
+    tr.appendChild(codeTd);
+
     const cells = [
-      scheduledSlot ? `✓ ${code}` : code,
       info?.description || "",
       info?.prerequisites || "None",
       extraInfoTags(info).join(", ") || "--",
       info ? `${info.credits} cr` : "",
     ];
-    const classes = ["search-cell-code", "search-cell-desc", "search-cell-prereq", "search-cell-tags", "search-cell-credits"];
+    const classes = ["search-cell-desc", "search-cell-prereq", "search-cell-tags", "search-cell-credits"];
     cells.forEach((text, i) => {
       const td = document.createElement("td");
       td.className = classes[i];
@@ -1663,6 +1740,15 @@ function wireDropTarget(el, slotId) {
     el.classList.remove("drag-over");
     const code = e.dataTransfer.getData("text/plain");
     if (code) placeCourse(code, slotId);
+  });
+  // Tap-to-place's other half -- see selectCourseForPlacement(). A tap
+  // anywhere in this semester's course list (including on an existing
+  // placed chip's non-button area) places whatever's currently selected.
+  el.addEventListener("click", () => {
+    if (!selectedCourseCode) return;
+    const code = selectedCourseCode;
+    clearPlacementSelection();
+    placeCourse(code, slotId);
   });
 }
 
@@ -1875,6 +1961,25 @@ function renderSemesterCard(slotId, idx, order) {
   }
   creditEl.textContent = statusText;
   head.appendChild(creditEl);
+
+  // Clears just this semester's courses -- distinct from "Remove
+  // Summer"/"Remove Fifth Year" below, which remove the semester SLOT
+  // itself (and, for Fifth Year, its paired semester + summer too). Reuses
+  // the same clearSlot() helper those already call. Only shown once there's
+  // actually something in the semester to clear.
+  if (codes.length) {
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "clear-semester-btn";
+    clearBtn.textContent = "Clear";
+    clearBtn.addEventListener("click", () => {
+      if (!confirm(`Clear ${meta.label}? Its ${codes.length} course(s) will be taken off your schedule.`)) return;
+      clearSlot(slotId);
+      saveSchedule();
+      renderAll();
+    });
+    head.appendChild(clearBtn);
+  }
 
   if (meta.kind === "summer") {
     const removeBtn = document.createElement("button");
@@ -2451,8 +2556,24 @@ function initColumnResizer() {
   const semesterCol = document.getElementById("semester-column");
   const appEl = document.getElementById("app");
 
+  // Below this width .app-columns stacks vertically instead of side by side
+  // (see style.css) and there's nothing left to resize -- a saved inline
+  // flexBasis from an earlier drag always outranks a stylesheet media-query
+  // rule, so it has to be actively cleared/restored as this crosses, not
+  // just left alone.
+  const stackedQuery = window.matchMedia("(max-width: 900px)");
+
   const saved = parseInt(localStorage.getItem(SEMESTER_WIDTH_KEY), 10);
-  if (Number.isFinite(saved)) semesterCol.style.flexBasis = `${saved}px`;
+  if (Number.isFinite(saved) && !stackedQuery.matches) semesterCol.style.flexBasis = `${saved}px`;
+
+  stackedQuery.addEventListener("change", (e) => {
+    if (e.matches) {
+      semesterCol.style.flexBasis = "";
+      return;
+    }
+    const width = parseInt(localStorage.getItem(SEMESTER_WIDTH_KEY), 10);
+    if (Number.isFinite(width)) semesterCol.style.flexBasis = `${width}px`;
+  });
 
   let dragging = false;
 
@@ -2520,6 +2641,10 @@ async function init() {
 
   document.getElementById("course-search").addEventListener("input", (e) => runSearch(e.target.value));
   document.getElementById("clear-all-btn").addEventListener("click", clearAllSchedule);
+
+  const courseInfoModal = document.getElementById("course-info-modal");
+  document.getElementById("course-info-modal-close").addEventListener("click", () => { courseInfoModal.hidden = true; });
+  courseInfoModal.addEventListener("click", (e) => { if (e.target === courseInfoModal) courseInfoModal.hidden = true; });
 
   const exportModal = document.getElementById("export-modal");
   document.getElementById("export-schedule-btn").addEventListener("click", () => { exportModal.hidden = false; });
