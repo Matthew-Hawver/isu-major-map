@@ -1293,7 +1293,9 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
   flex: 1 1 auto;
   overflow-y: auto;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
   padding: 2.5rem 1.25rem;
 }
 
@@ -1331,6 +1333,55 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
 }
 
 .about-linkedin-link:hover { filter: brightness(1.08); }
+
+/* GitHub's own dark chrome color -- fixed rather than var(--course) (the
+   LinkedIn button's blue) so the two CTAs read as distinct at a glance, and
+   fixed rather than theme-following since a solid near-black button looks
+   right in both light and dark mode already. */
+.about-repo-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 8px;
+  background: #24292f;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.about-repo-link:hover { filter: brightness(1.25); }
+
+.repo-file-list {
+  margin: 0 0 1.25rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.repo-file-row {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+}
+
+.repo-file-row:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.repo-file-row dt {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 700;
+  color: var(--course);
+  margin-bottom: 0.2rem;
+}
+
+.repo-file-row dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
 
 /* Views (the two tab panels): only the active one is shown, filling all
    space between the tab bar and the bottom bar -- switching tabs never
@@ -1399,14 +1450,14 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
    query further down) -- above that width the full controls panel is just
    always visible in place, exactly as before this toolbar existed, so
    these two toggle buttons have nothing to toggle and stay hidden. */
-.web-toolbar {
+.mobile-toolbar {
   display: none;
   gap: 0.6rem;
   width: 100%;
   justify-content: center;
 }
 
-.web-toolbar-btn {
+.mobile-toolbar-btn {
   border: 1px solid var(--border);
   background: var(--panel);
   color: var(--text);
@@ -1418,8 +1469,8 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
   white-space: nowrap;
 }
 
-.web-toolbar-btn:hover,
-.web-toolbar-btn.active { background: var(--accent-soft); border-color: var(--accent); }
+.mobile-toolbar-btn:hover,
+.mobile-toolbar-btn.active { background: var(--accent-soft); border-color: var(--accent); }
 
 .web-controls-panel {
   display: flex;
@@ -1868,43 +1919,42 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
    Connected's permanent 320px ranking sidebar next to the graph canvas --
    both switch to a stacked/drawer layout instead. */
 @media (max-width: 900px) {
-  /* Stacked mode makes .app-columns itself the one scroll container --
-     schedule panel, then requirements panel, in normal document flow --
-     rather than trying to give each panel its own independently-scrolling
-     fixed-height slice the way the desktop side-by-side layout does. Giving
-     both nested scroll regions a fair fixed split only works when there's
-     ample vertical space; on a phone (especially with the summary bar
-     already wrapping to 2-3 lines above this) that split can get squeezed
-     to near-zero for one side -- letting everything size to its own
-     content and scrolling the outer container avoids that fight entirely. */
-  .app-columns {
-    flex-direction: column;
-    overflow-y: auto;
-  }
+  /* Tab-switched instead of stacked-and-scrolled: only one of the schedule/
+     requirements panels is shown at a time (toggled by the always-visible
+     .mobile-toolbar below, mirroring the same pattern used on Classes
+     Connected -- see .mobile-toolbar there too), each filling the full
+     height with its own internal scroll exactly like the desktop
+     side-by-side layout already gives each column. An earlier version
+     stacked both panels and made .app-columns itself the one scroll
+     container, which worked but meant scrolling through the entire
+     schedule just to reach the requirements list below it (or vice versa)
+     -- full tab panels are both more direct and match how Classes
+     Connected's own mobile controls already behave, for one consistent
+     "how do I get to X on a small screen" pattern across the whole site. */
+  .app-columns { flex-direction: column; }
 
-  .semester-column {
-    flex: 0 0 auto;
-    max-height: none;
+  .mobile-toolbar { display: flex; }
+
+  .semester-column,
+  .browse-column { display: none; }
+
+  .app-columns.showing-schedule .semester-column,
+  .app-columns.showing-requirements .browse-column {
+    display: flex;
+    flex: 1 1 auto;
   }
 
   .semester-list {
-    overflow-y: visible;
-    flex: 0 0 auto;
-  }
-
-  .browse-column {
-    flex: 0 0 auto;
-    min-height: 0;
+    overflow-y: auto;
+    flex: 1 1 auto;
   }
 
   .browse-scroll {
-    overflow-y: visible;
-    flex: 0 0 auto;
+    overflow-y: auto;
+    flex: 1 1 auto;
   }
 
-  /* Nothing to resize once the columns are stacked instead of side by side
-     -- see the initColumnResizer() guard in app.js that stops a saved pixel
-     width from fighting this rule via inline style. */
+  /* Nothing to resize with only one column visible at a time. */
   .column-resizer { display: none; }
 
   /* Both of these are 2-up layouts that don't fit a phone/tablet-width
@@ -1912,10 +1962,26 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
   .section-columns { column-count: 1; }
   .category-halves { grid-template-columns: 1fr; }
 
+  /* Below 900px there isn't room for all four labels at their natural
+     width -- letting them wrap (an earlier version of this rule) meant 3
+     sat on one row and the 4th ("Degree Planning") alone on a second,
+     uneven and looking like something broke. Replaced with a single-row,
+     evenly-divided bar instead: every link gets an equal share of the full
+     width, so it reads as one deliberate, formal structure regardless of
+     label length -- the same underline-on-active treatment carries over
+     unchanged, it just centers under a wider, evenly-sized cell now. */
+  .top-nav { padding: 0.7rem 0.75rem 0.55rem; }
+
   .top-nav-cluster {
-    flex-wrap: wrap;
-    row-gap: 0.4rem;
-    gap: 0.9rem;
+    width: 100%;
+    gap: 0;
+  }
+
+  .nav-link {
+    flex: 1 1 0;
+    text-align: center;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.15rem;
   }
 
   /* The ranking sidebar becomes an off-canvas drawer instead of a permanent
@@ -1925,7 +1991,7 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
      safe since html,body{overflow:hidden} already clips it to the viewport.
      position:absolute scoped to .web-main (not position:fixed spanning the
      whole viewport) so the drawer starts right below the always-visible
-     .web-toolbar instead of sliding out from underneath/behind it -- the
+     .mobile-toolbar instead of sliding out from underneath/behind it -- the
      two rendering at the same vertical position was producing a doubled,
      overlapping "Most Connected Classes" header. */
   #ranking-panel-toggle-btn { display: inline-flex; align-items: center; }
@@ -1954,7 +2020,7 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
      just isn't room for "power user" controls to sit permanently visible
      next to a graph that's the whole point of the page. Below 900px the
      panel becomes a collapsed-by-default overlay instead: only the slim
-     .web-toolbar (two toggle buttons) stays always visible, and
+     .mobile-toolbar (two toggle buttons) stays always visible, and
      .web-controls-panel drops down over the canvas from behind it only
      when opened, so the canvas gets virtually the entire screen the rest
      of the time. */
@@ -1964,7 +2030,7 @@ body.tap-place-active .semester-course-list:not(.drag-over) {
      the ranking drawer spans the full height from the very top of the
      screen, which would otherwise cover these buttons (specifically
      making it impossible to tap over to Search & Filters) once it's open. */
-  .web-toolbar {
+  .mobile-toolbar {
     position: relative;
     z-index: 46;
     display: flex;

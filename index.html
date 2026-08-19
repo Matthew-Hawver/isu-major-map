@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Iowa State Degree Planning</title>
-<link rel="stylesheet" href="style.css?v=20260804l">
+<link rel="stylesheet" href="style.css?v=20260804n">
 </head>
 <body>
 <header class="top-nav">
@@ -269,8 +269,12 @@
       </div>
     </section>
 
-    <div id="app" class="app-columns" hidden>
+    <div id="app" class="app-columns showing-schedule" hidden>
       <p id="tap-place-hint" hidden></p>
+      <div class="mobile-toolbar">
+        <button type="button" id="schedule-tab-btn" class="mobile-toolbar-btn active">Schedule</button>
+        <button type="button" id="requirements-tab-btn" class="mobile-toolbar-btn">Requirements</button>
+      </div>
       <section class="semester-column" id="semester-column" aria-label="Your schedule">
         <div class="semester-list" id="semester-list"></div>
         <div class="semester-footer">
@@ -300,9 +304,9 @@
     <!-- Always-visible slim toolbar (only rendered as a distinct bar below
          900px -- see style.css). Above 900px the full controls panel is
          just always shown in place, same as before this existed. -->
-    <div class="web-toolbar">
-      <button type="button" id="ranking-panel-toggle-btn" class="web-toolbar-btn">Most Connected Classes</button>
-      <button type="button" id="web-controls-toggle-btn" class="web-toolbar-btn">Search &amp; Filters</button>
+    <div class="mobile-toolbar">
+      <button type="button" id="ranking-panel-toggle-btn" class="mobile-toolbar-btn">Most Connected Classes</button>
+      <button type="button" id="web-controls-toggle-btn" class="mobile-toolbar-btn">Search &amp; Filters</button>
     </div>
     <div class="web-controls-panel" id="web-controls-panel">
       <div class="web-header-row">
@@ -377,6 +381,42 @@
       for details.</p>
       <a class="about-linkedin-link" href="https://www.linkedin.com/in/matthew-hawver-7948913ba" target="_blank" rel="noopener noreferrer">Connect on LinkedIn ↗</a>
     </div>
+
+    <div class="about-card">
+      <h2>Open Source</h2>
+      <p>Everything here -- the ISU catalog scrapers, the data pipeline that
+      turns them into JSON, and this website itself -- is public on GitHub,
+      if you want to see how it works or run it yourself.</p>
+
+      <dl class="repo-file-list">
+        <div class="repo-file-row">
+          <dt>README.md</dt>
+          <dd>Project overview and setup instructions -- start here.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>PROJECT_DOCUMENTATION.md</dt>
+          <dd>The full technical write-up: every file, every feature, and how the data pipeline fits together.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>run_full_update.py</dt>
+          <dd>One command that re-scrapes ISU's catalog and rebuilds the site's data, start to finish.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>scrapers/</dt>
+          <dd>The Python scripts that pull majors, minors, Masters programs, and ~8,400 courses directly from ISU's course catalog.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>data/</dt>
+          <dd>The scraped CSVs those scrapers produce -- checked in, so the site can be built without re-scraping.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>website/</dt>
+          <dd>The actual site: HTML/CSS/JS, plus the build scripts that turn data/'s CSVs into the JSON the browser loads.</dd>
+        </div>
+      </dl>
+
+      <a class="about-repo-link" href="https://github.com/Matthew-Hawver/isu-major-map" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a>
+    </div>
   </div>
 </div>
 
@@ -401,10 +441,10 @@
      three.js r134 is the version Vanta's own docs pair with vanta.birds. -->
 <script src="assets/vendor/three.r134.min.js"></script>
 <script src="assets/vendor/vanta.birds.min.js"></script>
-<script src="theme.js?v=20260804l"></script>
-<script src="app.js?v=20260804l"></script>
-<script src="web.js?v=20260804l"></script>
-<script src="tabs.js?v=20260804l"></script>
-<script src="landing-bg.js?v=20260804l"></script>
+<script src="theme.js?v=20260804n"></script>
+<script src="app.js?v=20260804n"></script>
+<script src="web.js?v=20260804n"></script>
+<script src="tabs.js?v=20260804n"></script>
+<script src="landing-bg.js?v=20260804n"></script>
 </body>
 </html>

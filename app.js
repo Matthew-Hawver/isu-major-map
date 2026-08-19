@@ -2642,6 +2642,24 @@ async function init() {
   document.getElementById("course-search").addEventListener("input", (e) => runSearch(e.target.value));
   document.getElementById("clear-all-btn").addEventListener("click", clearAllSchedule);
 
+  // Below 900px the schedule and requirements columns are tab-switched
+  // instead of both visible at once (see style.css) -- mirrors the same
+  // toolbar pattern Classes Connected uses. Above that width these two
+  // buttons are hidden and .app-columns just shows both, unaffected.
+  const appColumns = document.getElementById("app");
+  const scheduleTabBtn = document.getElementById("schedule-tab-btn");
+  const requirementsTabBtn = document.getElementById("requirements-tab-btn");
+  scheduleTabBtn.addEventListener("click", () => {
+    appColumns.classList.replace("showing-requirements", "showing-schedule");
+    scheduleTabBtn.classList.add("active");
+    requirementsTabBtn.classList.remove("active");
+  });
+  requirementsTabBtn.addEventListener("click", () => {
+    appColumns.classList.replace("showing-schedule", "showing-requirements");
+    requirementsTabBtn.classList.add("active");
+    scheduleTabBtn.classList.remove("active");
+  });
+
   const courseInfoModal = document.getElementById("course-info-modal");
   document.getElementById("course-info-modal-close").addEventListener("click", () => { courseInfoModal.hidden = true; });
   courseInfoModal.addEventListener("click", (e) => { if (e.target === courseInfoModal) courseInfoModal.hidden = true; });

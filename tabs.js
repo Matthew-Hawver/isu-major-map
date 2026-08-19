@@ -153,7 +153,7 @@ document.querySelectorAll(".help-feedback-item").forEach((btn) => {
 // Update this every time the scrapers are re-run (see PROJECT_DOCUMENTATION.md
 // §8 Maintenance) -- a stale date is still far more useful to a visitor than
 // no date at all, since it tells them how much to trust what they're seeing.
-const DATA_LAST_UPDATED = "August 13, 2026";
+const DATA_LAST_UPDATED = "August 14, 2026";
 
 document.getElementById("terms-last-updated").textContent = DATA_LAST_UPDATED;
 
