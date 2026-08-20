@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iowa State Degree Planning</title>
+<link rel="stylesheet" href="style.css?v=20260805c">
+</head>
+<body>
+<header class="top-nav">
+  <div class="top-nav-cluster" role="tablist" aria-label="Main navigation">
+    <button type="button" class="nav-link" id="help-tab-btn">Help</button>
+    <button type="button" class="nav-link" data-tab="about" role="tab" aria-selected="false">About</button>
+    <button type="button" class="nav-link" data-tab="web" role="tab" aria-selected="false">Classes Connected</button>
+    <button type="button" class="nav-link active" data-tab="planner" role="tab" aria-selected="true">Degree Planning</button>
+  </div>
+</header>
+
+<div class="modal-overlay" id="honors-info-modal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3>University Honors Program Requirements</h3>
+      <button type="button" class="modal-close" id="honors-info-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-note">This is a short summary of the requirements
+      every college's Honors Program shares. It comes from the Iowa State
+      University Honors Program Student Handbook.</p>
+      <ol class="honors-rules-list">
+        <li>Keep a cumulative grade point average of 3.50 or higher.</li>
+        <li>Take two honors courses (at least 5 credits total).</li>
+        <li>Take two honors seminars.</li>
+        <li>Submit an advisory program of study (POS) to your college's
+        Honors Committee. Do this when you have five semesters left before
+        graduation, usually the spring of your sophomore year.</li>
+        <li>Complete an honors project. The project proposal is due one
+        semester before you start (September 21 or February 21). Register
+        for 1 to 4 credits of HON 4900A/B during the semester you finish
+        your project.</li>
+        <li>Present at the Honors Poster Session.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="feedback-modal" hidden>
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="feedback-modal-title">Feedback</h3>
+      <button type="button" class="modal-close" id="feedback-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-note">This goes straight to us. You don't need an email app.</p>
+      <label class="modal-field" id="feedback-major-field">
+        <span>Major name</span>
+        <input type="text" id="feedback-major-input">
+      </label>
+      <label class="modal-field">
+        <span id="feedback-textarea-label">Details</span>
+        <textarea id="feedback-textarea" rows="5"></textarea>
+      </label>
+      <button type="button" class="modal-submit-btn" id="feedback-submit-btn">Submit</button>
+      <p class="modal-thanks" id="feedback-thanks" hidden>Thanks! We noted this to help improve the site.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="terms-modal" hidden>
+  <div class="modal-box modal-box-wide">
+    <div class="modal-header">
+      <h3>Disclaimer and Terms of Use</h3>
+      <button type="button" class="modal-close" id="terms-modal-close">&times;</button>
+    </div>
+    <div class="modal-body modal-body-scroll">
+      <p>This site is an independent, unofficial student project. It is not
+      affiliated with, endorsed by, or sponsored by Iowa State University or
+      any of its departments. Course names, numbers, requirements, and
+      prerequisite data are shown for information only.</p>
+
+      <p><strong>Data sources.</strong> Course, prerequisite, and
+      degree-requirement data comes from Iowa State's public course catalog.
+      It was last updated on
+      <strong id="terms-last-updated">(date not set)</strong>. Some figures
+      may be incomplete, wrong, or out of date. Majors, minors, and course
+      offerings change over time.</p>
+
+      <p><strong>Grades and GPA are your own, not institutional data.</strong>
+      Any grades or GPA you see in the planner are ones you entered
+      yourself, for your own tracking. They stay stored only in your
+      browser. They do not come from official ISU records, and no one but
+      you can see them.</p>
+
+      <p><strong>No warranty.</strong> This site is provided "as is" and "as
+      available," with no warranty of any kind. That includes accuracy,
+      completeness, and fitness for any particular purpose. Course
+      offerings, prerequisites, credit hours, and degree requirements
+      change often, and this site may have them wrong.</p>
+
+      <p><strong>Schedule output is not a registration.</strong> Any
+      schedule you build here is a planning aid only. It does not reserve
+      seats. It does not check every prerequisite or restriction, and it
+      may allow conflicts or invalid combinations. You can only register
+      through official Iowa State University systems.</p>
+
+      <p><strong>Not academic advice.</strong> Nothing on this site counts
+      as official academic advising. Only your assigned academic advisor
+      and the official Iowa State University Course Catalog can confirm
+      your degree requirements and graduation eligibility. It is your
+      responsibility to check your own plan.</p>
+
+      <p><strong>Limitation of liability.</strong> To the fullest extent the
+      law allows, the operator of this site is not liable for any damages
+      from your use of this site, direct or indirect. This includes delayed
+      graduation, lost tuition, missed registration, scheduling conflicts,
+      or any other academic or financial harm.</p>
+
+      <p>By using this site, you agree to these terms. If you do not agree,
+      do not use the site.</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="help-modal" hidden>
+  <div class="modal-box modal-box-wide">
+    <div class="modal-header">
+      <h3>How to Use This Site</h3>
+      <button type="button" class="modal-close" id="help-modal-close">&times;</button>
+    </div>
+    <div class="modal-body modal-body-scroll">
+      <p><strong>Getting started.</strong> Search for your major on the
+      first screen and pick it. You can also add a second major, a minor,
+      or Masters plans, or mark yourself as an Honors student. All of these
+      are optional. Then click "Create a Schedule."</p>
+
+      <p><strong>Your schedule</strong> (left column) starts pre-filled with
+      an example pathway. Drag any course from the requirements list on the
+      right into a semester to add it. Drag it off the schedule to remove
+      it. Each course row has a "Pre/Co-reqs" button that shows what it
+      needs and flags a red warning if something is still missing. It also
+      has an "Add Grade" button for your own GPA tracking. Use "+ Add
+      Summer Semester" or "+ Add Fifth Year" if your plan needs either
+      one.</p>
+
+      <p><strong>Requirements checklist</strong> (right column) lists every
+      section of each program you picked. A green checkmark means that
+      section is fully scheduled. The search bar above it searches courses,
+      departments, and named requirement categories.</p>
+
+      <p><strong>Changing your programs.</strong> Click "Edit Selections" at
+      the top of the schedule screen any time. You can change your major,
+      add or remove a second major, minor, or Masters, or toggle Honors.
+      Each combination of programs keeps its own saved schedule.</p>
+
+      <p><strong>Export / Import.</strong> "Export Schedule" saves your
+      whole plan, including grades, as a CSV file or an Excel-openable
+      file. "Import Schedule" reads one of those files back in. It only
+      works with files this site exported. A plain .xlsx file saved from
+      Excel is not supported.</p>
+
+      <p><strong>Classes Connected</strong> (the other tab) shows every
+      course as a dot. Courses connect to each other by prerequisite,
+      corequisite, cross-listing, or being mentioned together. Bigger dots
+      have more connections. Drag to pan, scroll to zoom, click a dot to
+      pin it and highlight its direct connections, or search for a course
+      by name.</p>
+    </div>
+    <div class="modal-body help-feedback-section">
+      <p class="help-feedback-heading">Want the guided walkthrough again?</p>
+      <button type="button" class="help-tour-replay-btn" id="help-reopen-tour-btn">Replay the Welcome Tour</button>
+    </div>
+    <div class="modal-body help-feedback-section">
+      <p class="help-feedback-heading">Still stuck, or found something wrong?</p>
+      <button type="button" class="help-feedback-item" data-feedback="improve">How can we improve your experience</button>
+      <button type="button" class="help-feedback-item" data-feedback="incomplete">My major isn't complete</button>
+      <button type="button" class="help-feedback-item" data-feedback="cant-find">I can't find my major</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="welcome-modal" hidden>
+  <div class="modal-box modal-box-wide">
+    <div class="modal-header">
+      <h3>Welcome to the ISU Degree Planner</h3>
+      <button type="button" class="modal-close" id="welcome-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Is this your first time here?</p>
+      <button type="button" class="modal-choice-btn" id="welcome-first-time-btn">Yes, this is my first time</button>
+      <button type="button" class="modal-choice-btn" id="welcome-returning-btn">No, I've used this before</button>
+
+      <div id="welcome-returning-panel" hidden>
+        <p class="modal-note">If you have exported a schedule from this
+        site before, upload it here. We'll take you straight to your major,
+        minor, Masters, and Honors status, with your courses and grades
+        already in place.</p>
+        <button type="button" class="modal-choice-btn" id="welcome-upload-btn">Upload My Previous Schedule</button>
+        <input type="file" id="welcome-upload-file" accept=".csv,.xls" hidden>
+        <p class="modal-note" id="welcome-upload-status"></p>
+      </div>
+
+      <button type="button" class="footer-terms-link" id="welcome-skip-btn">Skip to the site</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="tour-modal" hidden>
+  <div class="modal-box modal-box-wide">
+    <div class="modal-header">
+      <h3 id="tour-modal-title">Welcome</h3>
+      <button type="button" class="modal-close" id="tour-modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <img class="tour-modal-image" id="tour-modal-image" src="" alt="">
+      <p id="tour-modal-text"></p>
+      <p class="tour-step-counter" id="tour-step-counter"></p>
+      <div class="tour-nav-row">
+        <button type="button" class="modal-choice-btn" id="tour-back-btn">Back</button>
+        <button type="button" class="footer-terms-link" id="tour-skip-btn">Skip Tour</button>
+        <button type="button" class="modal-choice-btn" id="tour-next-btn">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="planner-view" class="view">
+  <header id="summary-bar" hidden>
+    <div class="summary-programs" id="summary-programs"></div>
+    <button type="button" id="edit-selections-btn" class="clear-all-btn">Edit Selections</button>
+    <button type="button" id="export-schedule-btn" class="clear-all-btn export-btn">Export Schedule</button>
+    <button type="button" id="import-schedule-btn" class="clear-all-btn export-btn" title="Accepts a .csv file, or the .xls file this site's Export Schedule produces. A plain .xlsx saved from Excel will not work.">Import Schedule (.csv, .xls)</button>
+    <input type="file" id="import-schedule-file" accept=".csv,.xls" hidden>
+  </header>
+
+  <div class="modal-overlay" id="export-modal" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Export Schedule</h3>
+        <button type="button" class="modal-close" id="export-modal-close">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-field">
+          <span>Your name</span>
+          <input type="text" id="export-name-input" placeholder="e.g. Jane Smith">
+        </label>
+        <button type="button" class="modal-choice-btn" id="export-csv-btn">Export as CSV</button>
+        <button type="button" class="modal-choice-btn" id="export-xls-btn">Export as Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shared course-detail modal: a tap-friendly alternative to the
+       hover-only tooltip, for the two chip/row surfaces that don't already
+       have their own Description/Pre-Co-reqs buttons (see renderPlacedChip()
+       in app.js for the surface that does). -->
+  <div class="modal-overlay" id="course-info-modal" hidden>
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="course-info-modal-title">Course</h3>
+        <button type="button" class="modal-close" id="course-info-modal-close">&times;</button>
+      </div>
+      <div class="modal-body" id="course-info-modal-body"></div>
+    </div>
+  </div>
+
+  <main>
+    <section id="landing" class="landing">
+      <img class="isu-logo" src="assets/isu-logo.webp" alt="Iowa State University seal" width="800" height="800">
+      <div class="landing-card-wrap">
+        <div class="landing-inner">
+          <h2>Which major are you working toward?</h2>
+          <button type="button" class="cant-find-btn" id="cant-find-major-btn">Can't Find My Major?</button>
+          <input type="text" id="major-typeahead" class="major-typeahead" placeholder="Type to search, like &quot;engineering&quot;…" autocomplete="off">
+          <div id="major-typeahead-results" class="major-typeahead-results"></div>
+          <!-- Data holder only -- the typeahead above is the one real UI for
+               picking a major; this stays in the DOM (unstyled/invisible)
+               purely because programSelectIds()/scheduleKey()/etc. all read
+               its .value, and duplicating that plumbing wasn't worth it. -->
+          <select id="major-select" hidden>
+            <option value="">Loading majors…</option>
+          </select>
+
+          <div class="landing-extra-pickers" id="landing-extra-pickers" hidden>
+            <p class="landing-extra-hint">Want to add a second major, a minor, or Masters plans? These are all optional. Leave any of them blank if you don't need them.</p>
+            <label>
+              Second Major <span class="optional">(optional)</span>
+              <div class="searchable-select-mount" id="second-major-mount"></div>
+              <select id="second-major-select" hidden>
+                <option value="">None (optional)</option>
+              </select>
+            </label>
+            <label>
+              Minor <span class="optional">(optional)</span>
+              <div class="searchable-select-mount" id="minor-mount"></div>
+              <select id="minor-select" hidden>
+                <option value="">None</option>
+              </select>
+            </label>
+            <label>
+              Masters <span class="optional">(optional)</span>
+              <div class="searchable-select-mount" id="masters-mount"></div>
+              <select id="masters-select" hidden>
+                <option value="">None (optional)</option>
+              </select>
+            </label>
+            <label class="honors-toggle">
+              <input type="checkbox" id="honors-toggle">
+              Honors student <span class="optional">(raises max credits/semester to 22)</span>
+              <button type="button" class="info-icon-btn" id="honors-info-open" title="What does the Honors Program actually require?" aria-label="Honors Program requirements">ⓘ</button>
+            </label>
+            <button type="button" id="view-schedule-btn" class="view-schedule-btn">Create a Schedule →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div id="app" class="app-columns showing-schedule" hidden>
+      <p id="tap-place-hint" hidden></p>
+      <div class="mobile-toolbar">
+        <button type="button" id="schedule-tab-btn" class="mobile-toolbar-btn active">Schedule</button>
+        <button type="button" id="requirements-tab-btn" class="mobile-toolbar-btn">Requirements</button>
+      </div>
+      <section class="semester-column" id="semester-column" aria-label="Your schedule">
+        <div class="semester-list" id="semester-list"></div>
+        <div class="semester-footer">
+          <div class="progress-summary" id="progress-summary"></div>
+          <button type="button" id="clear-all-btn" class="clear-all-btn">Clear All</button>
+        </div>
+      </section>
+
+      <div class="column-resizer" id="column-resizer" title="Drag to resize"></div>
+
+      <section class="browse-column" aria-label="Search and requirements">
+        <div class="search-bar">
+          <input type="search" id="course-search" placeholder="Search courses, departments, or requirements (e.g. &quot;international perspectives&quot;, &quot;IP&quot;, &quot;ME&quot;)…" autocomplete="off">
+          <p class="search-hint" id="search-hint"></p>
+        </div>
+        <div class="browse-scroll" id="browse-scroll">
+          <div id="search-results"></div>
+          <div id="results"></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="web-view" class="view" hidden>
+  <header class="web-header">
+    <!-- Always-visible slim toolbar (only rendered as a distinct bar below
+         900px -- see style.css). Above 900px the full controls panel is
+         just always shown in place, same as before this existed. -->
+    <div class="mobile-toolbar">
+      <button type="button" id="ranking-panel-toggle-btn" class="mobile-toolbar-btn">Most Connected Classes</button>
+      <button type="button" id="web-controls-toggle-btn" class="mobile-toolbar-btn">Search &amp; Filters</button>
+    </div>
+    <div class="web-controls-panel" id="web-controls-panel">
+      <div class="web-header-row">
+        <input type="search" id="web-search" class="web-search" placeholder="Find a course, e.g. &quot;MATH 1660&quot;… (press Enter)" autocomplete="off">
+        <div class="searchable-select-mount web-filter-mount" id="web-major-filter-mount" title="Dim every course not part of this program"></div>
+        <select id="web-major-filter" hidden>
+          <option value="">All majors / minors</option>
+        </select>
+        <div class="searchable-select-mount web-filter-mount" id="web-dept-filter-mount" title="Dim every course outside this department"></div>
+        <select id="web-dept-filter" hidden>
+          <option value="">All departments</option>
+        </select>
+        <button type="button" id="web-clear-filters-btn" class="web-filter-clear-btn" hidden>Clear Filters</button>
+      </div>
+      <div class="web-header-row">
+        <input type="text" id="web-path-from" class="web-path-input" placeholder="From course, e.g. &quot;MATH 1650&quot;" autocomplete="off">
+        <span class="web-path-arrow" aria-hidden="true">→</span>
+        <input type="text" id="web-path-to" class="web-path-input" placeholder="To course, e.g. &quot;MATH 2670&quot;" autocomplete="off">
+        <button type="button" id="web-path-find-btn" class="web-filter-clear-btn">Find Prereq Path</button>
+        <button type="button" id="web-path-clear-btn" class="web-filter-clear-btn" hidden>Clear Path</button>
+        <p class="web-path-result" id="web-path-result"></p>
+      </div>
+    </div>
+  </header>
+  <main class="web-main">
+    <aside class="ranking-panel" id="ranking-panel">
+      <div class="ranking-header">
+        <h3>Most Connected Classes
+          <button type="button" class="info-icon-btn" title="1st = classes directly connected to this one by prerequisite. 2nd = classes those 1st-degree classes connect to. 3rd = one more step out from there. Same idea as &quot;degrees of separation&quot; / Kevin Bacon, but for prerequisite chains instead of movies." aria-label="What do 1st, 2nd, and 3rd degree connections mean?">ⓘ</button>
+        </h3>
+        <div class="ranking-sort-row">
+          <button type="button" class="ranking-sort-btn active" data-sort="conn1">1st</button>
+          <button type="button" class="ranking-sort-btn" data-sort="conn2">2nd</button>
+          <button type="button" class="ranking-sort-btn" data-sort="conn3">3rd</button>
+        </div>
+      </div>
+      <div class="ranking-list" id="ranking-list"></div>
+    </aside>
+    <div class="web-canvas-wrap">
+      <canvas id="graph-canvas"></canvas>
+      <div id="web-tooltip" class="course-tooltip" hidden></div>
+      <p class="web-hint" id="web-hint">Loading the web…</p>
+      <div class="web-legend" id="web-legend">
+        <button type="button" class="web-legend-title" id="web-legend-toggle-btn">What am I looking at?</button>
+        <div class="web-legend-body">
+          <p class="web-legend-desc">Each dot is a course. Bigger dots have more connections. A line means two courses are connected:</p>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-prereq"></span> Prerequisite</div>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-coreq"></span> Corequisite</div>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-cross"></span> Cross-listed / equivalent</div>
+          <div class="web-legend-row"><span class="web-legend-swatch web-legend-related"></span> Related (mentioned together)</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="about-view" class="view" hidden>
+  <div class="about-scroll">
+    <div class="about-card">
+      <img class="about-avatar" src="assets/headshot.jpg" alt="Matthew Hawver">
+      <h2>About This Site</h2>
+      <p>Hi, I'm <strong>Matthew Hawver</strong>, an Iowa State University
+      student. I built this degree planner to make things easier. Here you
+      can see a whole major's requirements, minors, and prerequisites in
+      one place. You can lay out a real semester-by-semester schedule, and
+      see how ISU's courses actually connect to each other. No more piecing
+      it all together by hand from the course catalog and requirement
+      sheets.</p>
+      <p>This is an independent, unofficial student project. Iowa State
+      University did not build, run, or endorse it. See the
+      <button type="button" class="footer-terms-link" id="about-terms-open">Terms &amp; Disclaimer</button>
+      for details.</p>
+      <a class="about-linkedin-link" href="https://www.linkedin.com/in/matthew-hawver-7948913ba" target="_blank" rel="noopener noreferrer">Connect on LinkedIn ↗</a>
+    </div>
+
+    <div class="about-card">
+      <h2>Open Source</h2>
+      <p>Everything here is public on GitHub: the ISU catalog scrapers, the
+      data pipeline that turns them into JSON, and this website itself.
+      Take a look if you want to see how it works, or run it yourself.</p>
+
+      <dl class="repo-file-list">
+        <div class="repo-file-row">
+          <dt>README.md</dt>
+          <dd>Project overview and setup instructions. Start here.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>PROJECT_DOCUMENTATION.md</dt>
+          <dd>The full technical write-up: every file, every feature, and how the data pipeline fits together.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>run_full_update.py</dt>
+          <dd>One command that re-scrapes ISU's catalog and rebuilds the site's data, start to finish.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>scrapers/</dt>
+          <dd>The Python scripts that pull majors, minors, Masters programs, and ~8,400 courses directly from ISU's course catalog.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>data/</dt>
+          <dd>The scraped CSVs those scrapers produce. These are checked in, so the site can be built without re-scraping.</dd>
+        </div>
+        <div class="repo-file-row">
+          <dt>website/</dt>
+          <dd>The actual site: HTML/CSS/JS, plus the build scripts that turn data/'s CSVs into the JSON the browser loads.</dd>
+        </div>
+      </dl>
+
+      <a class="about-repo-link" href="https://github.com/Matthew-Hawver/isu-major-map" target="_blank" rel="noopener noreferrer">View on GitHub ↗</a>
+    </div>
+  </div>
+</div>
+
+<footer class="bottom-bar">
+  <p class="footer-disclaimer">
+    Not affiliated with, endorsed by, or sponsored by Iowa State University.
+    Course data may be outdated. Confirm with your advisor and the official
+    ISU Course Catalog before registering.
+    <button type="button" class="footer-terms-link" id="terms-modal-open">Terms &amp; Disclaimer</button>
+  </p>
+  <div class="theme-switch-wrap">
+    <span class="theme-switch-label" id="theme-switch-label">Light Mode</span>
+    <label class="theme-switch">
+      <input type="checkbox" id="theme-toggle">
+      <span class="theme-switch-track"><span class="theme-switch-thumb"></span></span>
+    </label>
+  </div>
+</footer>
+
+<!-- ?v= busts browser/http.server caching -- bump this on any JS/CSS edit -->
+<!-- `defer` lets the browser fetch all 4 files in parallel instead of one
+     at a time -- they already sat at the very end of body, after all other
+     markup, so this doesn't change *when* they run relative to the DOM
+     (already fully parsed either way); it only lets the downloads overlap.
+     Execution order is still guaranteed to match this document order, so
+     theme.js still runs before app.js, etc., exactly as before. -->
+<script src="theme.js?v=20260805b" defer></script>
+<script src="app.js?v=20260805c" defer></script>
+<script src="web.js?v=20260805c" defer></script>
+<script src="tabs.js?v=20260805c" defer></script>
+</body>
+</html>
