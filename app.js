@@ -57,7 +57,11 @@ const ALL_GRADE_MARKS = [...GRADE_ORDER, ...PASS_MARKS];
 
 let programs = {};
 let mastersPrograms = {};
-let courses = {};
+// null (not {}) until startLoadingCourses() resolves, specifically so
+// goToSchedule() can tell "hasn't loaded yet" apart from "loaded, but
+// courses.json legitimately parsed to an empty object" -- {} is truthy, so
+// only a null/non-null check actually distinguishes the two.
+let courses = null;
 let requirementNotesByCode = {};
 let schedule = { activeSummers: [], courses: {}, grades: {}, honors: false, fifthYear: false };
 
@@ -70,15 +74,40 @@ let schedule = { activeSummers: [], courses: {}, grades: {}, honors: false, fift
 // click on its source element).
 let selectedCourseCode = null;
 
-async function loadData() {
-  const [programsRes, coursesRes, mastersRes] = await Promise.all([
+// courses.json (~4.6MB, by far the largest of the three) isn't actually
+// read by anything until AFTER a major is picked -- the landing screen's
+// major typeahead and buildSearchIndex() below only ever touch `programs`.
+// Splitting it out and kicking it off separately (see startLoadingCourses()
+// in init()) means the typeahead can go interactive as soon as the much
+// smaller programs.json (~1.8MB) resolves, while courses.json keeps loading
+// in the background during the time a user spends actually picking a major
+// -- goToSchedule() awaits it before it's actually needed, as a correctness
+// backstop for anyone who moves through setup unusually fast.
+async function loadPrograms() {
+  const [programsRes, mastersRes] = await Promise.all([
     fetch("data/programs.json"),
-    fetch("data/courses.json"),
     fetch("data/masters.json"),
   ]);
   programs = await programsRes.json();
-  courses = await coursesRes.json();
   mastersPrograms = await mastersRes.json();
+}
+
+// Set once, in init() below -- lets tabs.js's welcome-modal upload handler
+// (a separate script, running independently of init()'s own await chain)
+// wait for `programs`/`mastersPrograms` to be populated before resolving
+// program names against them, the same defensive role coursesLoadPromise
+// already plays for courses.json.
+let programsReadyPromise = null;
+
+let coursesLoadPromise = null;
+
+function startLoadingCourses() {
+  if (!coursesLoadPromise) {
+    coursesLoadPromise = fetch("data/courses.json")
+      .then((res) => res.json())
+      .then((data) => { courses = data; });
+  }
+  return coursesLoadPromise;
 }
 
 function buildSearchIndex() {
@@ -450,8 +479,8 @@ function placeCourse(code, targetSlotId, beforeCode) {
     const others = (schedule.courses[targetSlotId] || []).filter((c) => c !== code);
     const projected = others.reduce((sum, c) => sum + courseCredits(c), 0) + courseCredits(code);
     if (projected > SUMMER_MAX_CREDITS) {
-      alert(`${slotMeta(targetSlotId).label} is capped at ${SUMMER_MAX_CREDITS} credits -- `
-        + `adding ${code} would put it at ${projected}.`);
+      alert(`${slotMeta(targetSlotId).label} is capped at ${SUMMER_MAX_CREDITS} credits. `
+        + `Adding ${code} would put it at ${projected}.`);
       return;
     }
   }
@@ -1296,7 +1325,7 @@ function selectCourseForPlacement(code) {
   document.body.classList.toggle("tap-place-active", !!selectedCourseCode);
   const hint = document.getElementById("tap-place-hint");
   hint.hidden = !selectedCourseCode;
-  if (selectedCourseCode) hint.textContent = `${selectedCourseCode} selected -- tap a semester to add it`;
+  if (selectedCourseCode) hint.textContent = `${selectedCourseCode} selected. Tap a semester to add it.`;
   renderAll();
 }
 
@@ -1374,7 +1403,7 @@ function renderCategoryBucket(label, codes) {
   if (codes.length > shown.length) {
     const more = document.createElement("p");
     more.className = "typeahead-hint";
-    more.textContent = `+${codes.length - shown.length} more -- use search to find a specific one.`;
+    more.textContent = `+${codes.length - shown.length} more. Use search to find a specific one.`;
     bucket.appendChild(more);
   }
   return bucket;
@@ -1439,7 +1468,7 @@ function renderGroup(group, program) {
       // list exists to check against, so there's no way to compute a live count here --
       // shown as "? / target" rather than a live number so it doesn't look like a bug.
       li.innerHTML = `<span class="category-note">${req.note || "Elective"}</span> `
-        + `<span class="credits-pill" title="Can't verify this one automatically -- no specific course list is available for it.">? / ${target} cr</span>`;
+        + `<span class="credits-pill" title="Can't verify this one automatically. No specific course list is available for it.">? / ${target} cr</span>`;
       return li;
     }
 
@@ -1520,7 +1549,7 @@ function renderProgram(program) {
   const complete = isProgramComplete(program);
   summary.className = "program-summary" + (complete ? " complete" : "");
   const flag = program.credits_flag
-    ? `<span class="flag-badge" title="This program's total credits look outside the typical range -- worth double-checking against the official catalog.">${program.credits_flag}</span>`
+    ? `<span class="flag-badge" title="This program's total credits look outside the typical range. It may be worth double-checking against the official catalog.">${program.credits_flag}</span>`
     : "";
   const liveTotal = programFulfilledCredits(program);
   const gpa = cumulativeGPA();
@@ -1557,7 +1586,7 @@ function renderMastersProgram(program) {
   const liveCredits = gradCreditsScheduled();
   const complete = target > 0 && liveCredits >= target;
   summary.className = "program-summary" + (complete ? " complete" : "");
-  const badge = `<span class="flag-badge masters-badge" title="ISU's Graduate College sets one uniform minimum (30 credits, at least 22 from ISU) for every Master's program -- there's no structured, per-program requirements page to check specific courses against, since ISU doesn't publish one for graduate programs (unlike undergraduate majors/minors).">Masters</span>`;
+  const badge = `<span class="flag-badge masters-badge" title="ISU's Graduate College sets one uniform minimum for every Master's program: 30 credits, with at least 22 from ISU. There's no structured, per-program requirements page to check specific courses against, since ISU doesn't publish one for graduate programs. That's different from undergraduate majors and minors, which do have one.">Masters</span>`;
   summary.innerHTML = `<h2>${programNameHtml(program.name, program.url)}${badge}</h2>`
     + `<div class="meta">${escapeHtml(program.degrees)} &middot; <span class="meta-credits">${liveCredits} / ${target} graduate credits (ISU minimum)</span></div>`;
   wrap.appendChild(summary);
@@ -1613,9 +1642,9 @@ function runSearch(query) {
   if (!q) {
     container.innerHTML = "";
     resultsPanel.hidden = false;
-    hint.textContent = "Search matches course codes, departments/descriptions, and requirement "
-      + "categories that list specific courses -- broad gen-ed tags without an enumerated course "
-      + "list on the catalog page (e.g. some International Perspectives entries) may not surface here.";
+    hint.textContent = "Search matches course codes, departments, descriptions, and requirement "
+      + "categories that list specific courses. Broad gen-ed tags without a listed set of courses "
+      + "on the catalog page, like some International Perspectives entries, may not show up here.";
     return;
   }
   resultsPanel.hidden = true;
@@ -1639,7 +1668,7 @@ function runSearch(query) {
   const heading = document.createElement("p");
   heading.className = "search-results-heading";
   heading.textContent = matches.length
-    ? `${matches.length}${matches.length >= SEARCH_MATCH_CAP ? "+" : ""} course${matches.length === 1 ? "" : "s"} match -- drag a row into a semester:`
+    ? `${matches.length}${matches.length >= SEARCH_MATCH_CAP ? "+" : ""} course${matches.length === 1 ? "" : "s"} match. Drag a row into a semester:`
     : "No courses match that search.";
   container.appendChild(heading);
 
@@ -1943,10 +1972,10 @@ function renderSemesterCard(slotId, idx, order) {
       creditEl.classList.add("neutral");
     } else if (credits < MIN_CREDITS) {
       creditEl.classList.add("warn");
-      statusText = `${credits} cr -- under full-time (need ${MIN_CREDITS})`;
+      statusText = `${credits} cr, under full-time (need ${MIN_CREDITS})`;
     } else if (credits > max) {
       creditEl.classList.add("warn");
-      statusText = `${credits} cr -- over the ${max} max`;
+      statusText = `${credits} cr, over the ${max} max`;
     } else {
       creditEl.classList.add("ok");
     }
@@ -2234,11 +2263,37 @@ function formatGpaCell(gpa) {
   return gpa !== null && gpa !== undefined ? gpa.toFixed(2) : "";
 }
 
+// Carries which programs were selected through the export file itself, as
+// a sentinel-tagged first row/line -- previously this only ever lived in
+// the download's filename (see buildExportFilename), never in the file's
+// own content, so re-importing a file could never restore it. Names, not
+// the internal <select> ids, since those ids are scrape-assigned and not
+// guaranteed stable across a future re-scrape -- resolveProgramIdByName()/
+// resolveMastersIdByName() (below) look the current id back up by name at
+// import time. The "-v1" suffix leaves room to change this format later
+// without breaking older exported files (extractProgramMetadata() below
+// would simply no longer recognize a "-v2" sentinel and fall back to
+// "no metadata" rather than misreading it).
+const PROGRAM_METADATA_SENTINEL = "ISU-Planner-Programs-v1";
+
+function buildProgramMetadataCells() {
+  const { major, secondMajor, minor, masters } = programSelectIds();
+  return [
+    PROGRAM_METADATA_SENTINEL,
+    programs[major]?.name || "",
+    programs[secondMajor]?.name || "",
+    programs[minor]?.name || "",
+    mastersPrograms[masters]?.name || "",
+    schedule.honors ? "Honors" : "",
+  ];
+}
+
 function exportAsCSV(data, filename) {
   const { sectionColumns, groups, cumulativeGpa } = data;
   const blankLeft = Array(LEFT_COLUMN_COUNT).fill("");
   const lines = [];
 
+  lines.push(buildProgramMetadataCells().map(csvEscape).join(","));
   lines.push([...blankLeft, ...sectionColumns.map((c) => c.name)].map(csvEscape).join(","));
   lines.push([...blankLeft, ...sectionColumns.map((c) => c.target)].map(csvEscape).join(","));
   lines.push("");
@@ -2276,6 +2331,7 @@ function exportAsExcel(data, filename) {
   const blankLeftCells = "<td></td>".repeat(LEFT_COLUMN_COUNT);
 
   let html = "<table border=\"1\">";
+  html += `<tr>${buildProgramMetadataCells().map((v) => `<td>${escapeHtml(v)}</td>`).join("")}</tr>`;
   html += `<tr>${blankLeftCells}${sectionColumns.map((c, i) => `<th style="background:${EXPORT_HEADER_COLORS[i % EXPORT_HEADER_COLORS.length]};">${escapeHtml(c.name)}</th>`).join("")}</tr>`;
   html += `<tr>${blankLeftCells}${sectionColumns.map((c) => `<td style="font-weight:bold;text-align:center;">${c.target}</td>`).join("")}</tr>`;
   html += `<tr><td colspan="${totalCols}">&nbsp;</td></tr>`;
@@ -2392,9 +2448,90 @@ function importScheduleFromRows(rows) {
   return { courses: newCourses, grades: newGrades, activeSummers: [...newSummers].sort((a, b) => a - b) };
 }
 
+// Shared by both import entry points (the existing "Import Schedule" button
+// on the schedule screen, and the welcome modal's "returning user" upload)
+// -- each also needs the raw rows for extractProgramMetadata() below, not
+// just importScheduleFromRows()'s courses/grades-only result.
+function parseImportRows(text) {
+  return looksLikeHTMLTable(text) ? rowsFromHTMLTable(text) : rowsFromCSVText(text);
+}
+
+function isSupportedImportFilename(name) {
+  return /\.(csv|xls)$/i.test(name);
+}
+
 function importScheduleFromText(text) {
-  const rows = looksLikeHTMLTable(text) ? rowsFromHTMLTable(text) : rowsFromCSVText(text);
-  return importScheduleFromRows(rows);
+  return importScheduleFromRows(parseImportRows(text));
+}
+
+// Reads back the sentinel row buildProgramMetadataCells() writes -- returns
+// null for any file that doesn't have one (an export from before this
+// feature existed, or a file that was never one of this site's exports),
+// which the caller treats as "can't auto-restore programs" rather than
+// guessing. Safe to run against rows from the *existing* import path too:
+// this only ever reads, never mutates, and a normal schedule export with no
+// matching first cell just yields null, same as before this existed.
+function extractProgramMetadata(rows) {
+  const row = rows.find((cells) => (cells[0] || "").trim() === PROGRAM_METADATA_SENTINEL);
+  if (!row) return null;
+  return {
+    majorName: (row[1] || "").trim(),
+    secondMajorName: (row[2] || "").trim(),
+    minorName: (row[3] || "").trim(),
+    mastersName: (row[4] || "").trim(),
+    honors: (row[5] || "").trim() === "Honors",
+  };
+}
+
+// Name (not id -- see buildProgramMetadataCells()'s comment) -> current id.
+// wantMinor distinguishes majors from minors, since `programs` holds both
+// under the same name-keyed search (populateSelect()'s own type filter).
+function resolveProgramIdByName(name, wantMinor) {
+  if (!name) return null;
+  const entry = Object.entries(programs).find(([, p]) => p.name === name && (wantMinor ? p.type === "Minor" : p.type !== "Minor"));
+  return entry ? entry[0] : null;
+}
+
+function resolveMastersIdByName(name) {
+  if (!name) return null;
+  const entry = Object.entries(mastersPrograms).find(([, p]) => p.name === name);
+  return entry ? entry[0] : null;
+}
+
+// The "returning user" welcome-modal upload's core: given metadata read
+// back from an uploaded export (see extractProgramMetadata()), sets every
+// program picker to match and navigates straight to the schedule --
+// reusing selectMajor()/goToSchedule() (the exact same path "Edit
+// Selections" already uses) rather than duplicating what they do.
+// Resolves to { ok: false } if the major itself can't be matched (nothing
+// sensible to navigate to); a second major/minor/Masters that doesn't
+// resolve is non-fatal and reported back via `warnings` instead, since
+// losing an optional program shouldn't block restoring the rest.
+async function applyRestoredProgramSelection(metadata) {
+  const majorId = resolveProgramIdByName(metadata.majorName, false);
+  if (!majorId) return { ok: false };
+
+  const warnings = [];
+  const secondMajorId = resolveProgramIdByName(metadata.secondMajorName, false);
+  if (metadata.secondMajorName && !secondMajorId) warnings.push(`second major "${metadata.secondMajorName}"`);
+  const minorId = resolveProgramIdByName(metadata.minorName, true);
+  if (metadata.minorName && !minorId) warnings.push(`minor "${metadata.minorName}"`);
+  const mastersId = resolveMastersIdByName(metadata.mastersName);
+  if (metadata.mastersName && !mastersId) warnings.push(`Masters program "${metadata.mastersName}"`);
+
+  // Honors must land in localStorage BEFORE goToSchedule() -- loadSchedule()
+  // (called from inside it) reads honors via honorsEnabled(), not from the
+  // checkbox itself.
+  localStorage.setItem(HONORS_KEY, metadata.honors ? "1" : "0");
+  document.getElementById("honors-toggle").checked = metadata.honors;
+
+  selectMajor(majorId); // also rebuilds major/second-major option exclusions
+  document.getElementById("second-major-select").value = secondMajorId || "";
+  document.getElementById("minor-select").value = minorId || "";
+  document.getElementById("masters-select").value = mastersId || "";
+
+  await goToSchedule(); // already awaits courses.json if it's not loaded yet
+  return { ok: true, warnings };
 }
 
 // Every selected *undergrad* program (major, second major, minor) with the
@@ -2544,9 +2681,22 @@ function showApp() {
 // The setup screen's "View My Schedule" button -- both the very first time
 // (initial setup) and every later "Edit Selections" round-trip route
 // through the same function, since both cases mean the same thing: apply
-// whatever's currently selected and show the schedule.
-function goToSchedule() {
+// whatever's currently selected and show the schedule. courses.json (see
+// startLoadingCourses()) has almost always already finished loading in the
+// background by the time anyone reaches this click -- the await + button
+// state below only ever matters for someone moving through setup unusually
+// fast on a slow connection, so it stays out of the way otherwise.
+async function goToSchedule() {
+  const btn = document.getElementById("view-schedule-btn");
   if (!document.getElementById("major-select").value) return; // button is only shown once a major exists, but guard anyway
+  if (!courses) {
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "Loading course data…";
+    await startLoadingCourses();
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
   applyProgramSelection();
   showApp();
 }
@@ -2601,7 +2751,9 @@ function initColumnResizer() {
 
 async function init() {
   initColumnResizer();
-  await loadData();
+  programsReadyPromise = loadPrograms();
+  await programsReadyPromise;
+  startLoadingCourses();
   buildSearchIndex();
 
   const majorSelect = document.getElementById("major-select");
@@ -2625,10 +2777,10 @@ async function init() {
   // to re-sync it whenever the exclusion logic rebuilds the hidden select's
   // own option list.
   secondMajorSearchable = wireSearchableSelectToHiddenSelect(
-    document.getElementById("second-major-mount"), secondMajorSelect, "None -- type to search",
+    document.getElementById("second-major-mount"), secondMajorSelect, "None, type to search",
   );
-  minorSearchable = wireSearchableSelectToHiddenSelect(document.getElementById("minor-mount"), minorSelect, "None -- type to search");
-  mastersSearchable = wireSearchableSelectToHiddenSelect(document.getElementById("masters-mount"), mastersSelect, "None -- type to search");
+  minorSearchable = wireSearchableSelectToHiddenSelect(document.getElementById("minor-mount"), minorSelect, "None, type to search");
+  mastersSearchable = wireSearchableSelectToHiddenSelect(document.getElementById("masters-mount"), mastersSelect, "None, type to search");
 
   document.getElementById("view-schedule-btn").addEventListener("click", goToSchedule);
   document.getElementById("edit-selections-btn").addEventListener("click", showLanding);
@@ -2641,6 +2793,24 @@ async function init() {
 
   document.getElementById("course-search").addEventListener("input", (e) => runSearch(e.target.value));
   document.getElementById("clear-all-btn").addEventListener("click", clearAllSchedule);
+
+  // Below 900px the schedule and requirements columns are tab-switched
+  // instead of both visible at once (see style.css) -- mirrors the same
+  // toolbar pattern Classes Connected uses. Above that width these two
+  // buttons are hidden and .app-columns just shows both, unaffected.
+  const appColumns = document.getElementById("app");
+  const scheduleTabBtn = document.getElementById("schedule-tab-btn");
+  const requirementsTabBtn = document.getElementById("requirements-tab-btn");
+  scheduleTabBtn.addEventListener("click", () => {
+    appColumns.classList.replace("showing-requirements", "showing-schedule");
+    scheduleTabBtn.classList.add("active");
+    requirementsTabBtn.classList.remove("active");
+  });
+  requirementsTabBtn.addEventListener("click", () => {
+    appColumns.classList.replace("showing-schedule", "showing-requirements");
+    requirementsTabBtn.classList.add("active");
+    scheduleTabBtn.classList.remove("active");
+  });
 
   const courseInfoModal = document.getElementById("course-info-modal");
   document.getElementById("course-info-modal-close").addEventListener("click", () => { courseInfoModal.hidden = true; });
@@ -2674,10 +2844,10 @@ async function init() {
     // hint and doesn't stop drag-and-drop, so this is the real gate. A
     // genuine .xlsx isn't supported (see looksLikeHTMLTable's comment);
     // catching it here avoids ever trying to parse it as CSV garbage.
-    if (!/\.(csv|xls)$/i.test(file.name)) {
-      alert(`"${file.name}" isn't a file this site can import -- it needs to be `
-        + `a .csv file, or the .xls file this site's own Export Schedule produces `
-        + `(a plain .xlsx saved from Excel isn't supported).`);
+    if (!isSupportedImportFilename(file.name)) {
+      alert(`"${file.name}" isn't a file this site can import. It needs to be `
+        + `a .csv file, or the .xls file this site's own Export Schedule produces. `
+        + `A plain .xlsx saved from Excel is not supported.`);
       e.target.value = "";
       return;
     }
@@ -2692,8 +2862,8 @@ async function init() {
         // the extension check). Bail out WITHOUT touching the existing
         // schedule rather than silently replacing it with an empty one.
         alert(`Couldn't find any recognizable courses in "${file.name}". `
-          + `Make sure it's a .csv or .xls file exported from this site -- `
-          + `your current schedule hasn't been changed.`);
+          + `Make sure it's a .csv or .xls file exported from this site. `
+          + `Your current schedule hasn't been changed.`);
         e.target.value = "";
         return;
       }

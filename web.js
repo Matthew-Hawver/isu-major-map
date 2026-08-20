@@ -72,6 +72,39 @@ function pointerDistance() {
   return Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
 }
 
+// ---------------- touch: long-press shows a node's info ----------------
+// A plain tap only pins/unpins a node (highlights its connections) -- the
+// info tooltip itself needs a deliberate hold on touch (mirrors right-click
+// on desktop, see the canvas "contextmenu" listener in wireEvents()) so it
+// doesn't pop up over whatever a user meant as an ordinary tap or the start
+// of a pan.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE = 12; // px -- looser than dragMoved's tap-vs-pan threshold, since a held finger drifts more than a quick tap does
+let longPressTimer = null;
+let longPressFired = false;
+
+function clearLongPressTimer() {
+  if (longPressTimer) {
+    clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+// Pins (or unpins) whichever node is at the given screen point and shows
+// its tooltip there -- the actual "reveal info" action, reached via
+// long-press (touch), right-click (mouse), or the ranking list's own click
+// handler already uses the pin half of this directly (see centerOn()).
+function pinAndShowInfo(clientX, clientY, pixelRadius) {
+  const rect = canvas.getBoundingClientRect();
+  const world = screenToWorld(clientX - rect.left, clientY - rect.top);
+  const found = findNodeNear(world.x, world.y, pixelRadius);
+  pinnedNode = found !== null && found === pinnedNode ? null : found;
+  render();
+  renderRankingList();
+  if (found !== null) showTooltip(found, clientX, clientY);
+  else hideTooltip();
+}
+
 // ---------------- filter by major/department ----------------
 // null filterCourseSet means "no major filter"; "" filterDept means "no
 // department filter". Combined with AND: a node passes if it satisfies
@@ -374,10 +407,10 @@ function populateFilterControls() {
   // is IIFE-wrapped but can still call any pre-existing global, same as it
   // already does for `programs`/`splitComboCode`).
   majorFilterSearchable = wireSearchableSelectToHiddenSelect(
-    document.getElementById("web-major-filter-mount"), majorSelect, "All majors / minors -- type to search",
+    document.getElementById("web-major-filter-mount"), majorSelect, "All majors / minors, type to search",
   );
   deptFilterSearchable = wireSearchableSelectToHiddenSelect(
-    document.getElementById("web-dept-filter-mount"), deptSelect, "All departments -- type to search",
+    document.getElementById("web-dept-filter-mount"), deptSelect, "All departments, type to search",
   );
 }
 
@@ -542,12 +575,29 @@ function wireEvents() {
       dragging = true;
       dragMoved = false;
       lastMouse = { x: e.clientX, y: e.clientY };
+
+      longPressFired = false;
+      clearLongPressTimer();
+      if (e.pointerType !== "mouse") {
+        const pointerId = e.pointerId;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        longPressTimer = setTimeout(() => {
+          longPressTimer = null;
+          const current = activePointers.get(pointerId);
+          if (!current) return; // already lifted
+          if (Math.hypot(current.x - startX, current.y - startY) > LONG_PRESS_MOVE_TOLERANCE) return; // was a pan, not a hold
+          longPressFired = true;
+          pinAndShowInfo(current.x, current.y, TOUCH_HIT_PIXEL_RADIUS);
+        }, LONG_PRESS_MS);
+      }
     } else if (activePointers.size === 2) {
       // A second finger just landed -- stop single-pointer panning and
       // start tracking the pinch from here. Anchoring to the gesture's
       // OWN start (not recomputed incrementally each move) avoids
       // floating-point drift over a long pinch.
       dragging = false;
+      clearLongPressTimer();
       const rect = canvas.getBoundingClientRect();
       const mid = pointerMidpoint();
       const world = screenToWorld(mid.x - rect.left, mid.y - rect.top);
@@ -588,7 +638,10 @@ function wireEvents() {
     if (dragging) {
       const dx = e.clientX - lastMouse.x;
       const dy = e.clientY - lastMouse.y;
-      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) dragMoved = true;
+      if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+        dragMoved = true;
+        clearLongPressTimer(); // a real pan started -- not a hold
+      }
       view.x += dx;
       view.y += dy;
       lastMouse = { x: e.clientX, y: e.clientY };
@@ -625,6 +678,7 @@ function wireEvents() {
   // pinching can get stuck thinking a pointer is still down.
   function endPointer(e) {
     activePointers.delete(e.pointerId);
+    clearLongPressTimer();
 
     if (activePointers.size === 1) {
       // Dropped from a pinch back to a single finger -- resume panning
@@ -642,12 +696,13 @@ function wireEvents() {
 
     if (activePointers.size > 0) return; // still mid-gesture with other pointers down
 
-    if (dragging && !dragMoved) {
-      // A genuine tap/click, not a drag or pinch -- pin (or unpin) the
-      // node under it AND show its info tooltip right here. Previously
-      // only a mouse click pinned a node without ever showing the tooltip
-      // itself (info only appeared via a separate hover side-channel), and
-      // touch had no equivalent at all -- this one path now covers both.
+    if (dragging && !dragMoved && !longPressFired) {
+      // A genuine tap/click, not a drag, pinch, or already-handled long
+      // press -- pins (or unpins) the node under it, same as always, but
+      // deliberately does NOT show the info tooltip: that's reserved for a
+      // long press (touch, see the pointerdown timer above) or a
+      // right-click (mouse, see the "contextmenu" listener below), so a
+      // plain tap/click while panning around doesn't pop it up unasked for.
       const rect = canvas.getBoundingClientRect();
       const world = screenToWorld(e.clientX - rect.left, e.clientY - rect.top);
       const isTouch = e.pointerType !== "mouse";
@@ -655,16 +710,22 @@ function wireEvents() {
       pinnedNode = found !== null && found === pinnedNode ? null : found;
       render();
       renderRankingList();
-      if (found !== null) showTooltip(found, e.clientX, e.clientY);
-      else hideTooltip();
     }
     dragging = false;
     dragMoved = false;
+    longPressFired = false;
     pinchStartDist = null;
     pinchStartScale = null;
   }
   window.addEventListener("pointerup", endPointer);
   window.addEventListener("pointercancel", endPointer);
+
+  // Desktop equivalent of the touch long-press above -- right-click shows
+  // (and pins) a node's info instead of the browser's own context menu.
+  canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    pinAndShowInfo(e.clientX, e.clientY, HOVER_PIXEL_RADIUS);
+  });
 
   canvas.addEventListener("wheel", (e) => {
     e.preventDefault();
@@ -822,7 +883,7 @@ async function ensureWebInitialized() {
   render();
   renderRankingList();
   document.getElementById("web-hint").textContent =
-    `${graph.nodes.length.toLocaleString()} connected courses -- `
+    `${graph.nodes.length.toLocaleString()} connected courses, `
     + `${graph.edges.length.toLocaleString()} connections (prerequisite, corequisite, cross-listed, or related)`;
 }
 
